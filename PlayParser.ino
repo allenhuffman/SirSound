@@ -363,9 +363,10 @@ void playWorker(unsigned int commandPtr, byte stringType)
           // ms=(tm/60)*1000
           // no floating point needed this way
           // (tm*1000)/60
-          duration = (duration*1000)/60;
-
-          delay(duration);
+          //duration = (duration*1000)/60;
+          //delay(duration);
+          
+          sequencerPut(0, REST, duration);
           
           dotVal = 0;
         }
