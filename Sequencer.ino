@@ -334,10 +334,9 @@ bool sequencerHandler()
       SEQUENCER_PRINT(noteLength);
       SEQUENCER_PRINT(F(" "));
   
-      //play(i, note );
-      //toneNote(i, note);
       unsigned long ms = (noteLength*1000L)/60L;
 
+      // if (note != REST) ?
       tonePlayNote(note, ms);
 
       S_playNextTime[track] = S_playNextTime[track] + ms;
