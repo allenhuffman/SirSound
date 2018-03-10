@@ -190,16 +190,9 @@ void setup()
     i++;
   } while(g_test[i].note != END);
 
-  bool isPlaying;
-  
-  isPlaying = sequencerStart();
+  sequencerStart();
+  while (sequencerIsPlaying()==true);
 
-  while( isPlaying == true )
-  {
-    isPlaying = sequencerHandler();
-  };
-
-#if 0
   // Input and Play routine.
   char buffer[80];
   while(1)
@@ -210,56 +203,76 @@ void setup()
     if (strncmp_P(buffer, PSTR("BYE"), 3)==0) break;
     play(buffer);
   }
-  
 /*
   Serial.println(F("Volume (not implemented):"));
   play(F("Z"));
   play(F("V1 C V5 C V10 C V15 C V20 C V25 C V31 C"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
   
   Serial.println(F("Length test:"));
   play(F("Z"));
   play(F("L1 CDEF L2 CDEF L4 CDEF L8 CDEF L16 CDEF"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
+
 
   Serial.println(F("Octave parsing:"));
   play(F("Z"));
   play(F("O1 C O2 C O3 C O4 C O5 C O4 C O3 C O2 C O1 C"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
   
   Serial.println(F("Numeric notes."));
   play(F("Z"));
   play(F("1;2;3;4;5;6;7;8;9;10;11;12"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
 
   Serial.println(F("Normal notes."));
   play(F("Z"));
   play(F("CDEFGAB"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
 
   Serial.println(F("Sharps using #."));
   play(F("Z"));
   play(F("CC#DD#EFF#GG#AA#B"));
-  delay(2000);
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
 
   Serial.println(F("Sharps using +."));
   play(F("Z"));
   play(F("CC+DD+EFF+GG+AA+B"));
-  delay(2000);
-
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
+*/
   Serial.println(F("Flats."));
   play(F("Z"));
   play(F("CD-DE-EFG-GA-AB-B"));
-  delay(2000);  
-*/
+  //while (sequencerIsPlaying()==true);
+  //delay(2000);
+  while (sequencerIsReady()==false);
+
   Serial.println(F("Example from the Extended Color BASIC manual."));
   play(F("Z"));
   play(F("T5;C;E;F;L1;G;P4;L4;C;E;F;L1;G"));
+  while (sequencerIsReady()==false);
   play(F("P4;L4;C;E;F;L2;G;E;C;E;L1;D"));
+  while (sequencerIsReady()==false);
   play(F("P8;L4;E;E;D;L2.;C;L4;C;L2;E"));
+  while (sequencerIsReady()==false);
   play(F("L4;G;G;G;L1;F;L4;E;F"));
+  while (sequencerIsReady()==false);
   play(F("L2;G;E;L4;C;L8;D;D+;D;E;G;L4;A;L1;O3;C"));
-  delay(2000);
+  while (sequencerIsReady()==false);
 
   // Relative octave jumps:
   // Peter Gunn: L8 CCDCL>DD+L<CFE
@@ -278,16 +291,25 @@ void setup()
   Serial.println(F("Sinfonia (Bach) arranged for CoCo by Tommy & Gail Pollok"));
   play(F("Z"));
   play(F("O2L8CO5L16CO4BO5L8CO4GEGL16CDCO3BO4L8CO3GEGL16CGDGEGFGEGDGCO4CO3BAGO4CO3BAGFEDCGDGEGFGEGDGCO4CO3BAGO4CO3BAGFEDCDEFGABO4CDEFDEGCDEFGABO5CO4ABO5CO4GFGEGFGEGDG"));
+  while (sequencerIsReady()==false);
   play(F("CO5CO4BAGCACGCFC EGDGEGFGEGDGCO5CO4BAGCACGCFC EO3CO4CO3CBCO4CO3"));
+  while (sequencerIsReady()==false);
   play(F("CO4DO3CBC O4CO3CO4EO3CO4DO3CO4EO3CO4FO3CO4DO3C O4ECO3CO4CO2BO4CO3CO4CO3DO4CO2BO4C O3CO4CO3EO4CO3DO4CO3EO4CO3F"));
+  while (sequencerIsReady()==false);
   play(F("O4CO3DO4C O3CDCDEGCDEGCD EFEFGO4CO3EFGO4CO3EF GAGAB-O4EO3GAB-O4EO3GA B-O4GECO3B-GECO2B-AB-G ABABO3C#EO2ABO3C#EO2AB"));
+  while (sequencerIsReady()==false);
   play(F("O3C#DC#DEAC#DEAC#D EFEFGO4C#O3EFGO4C#O3EF GO4EC#O3AO4GEFDC#EO3AG FAFDO4DO3BO4CO3AG#BED CECO2AO3CEAEO4CO3AO4EO3A"));
+  while (sequencerIsReady()==false);
   play(F("G#BG#EO4ED#ED#EO3BO4CO3A G#BG#EO4DC#DC#DO3BO4CO3A G#BG#EAEG#EL8AF L4EO4DP8L8O3B L4O4CO3AP8O4L8D# L4EO5DP8L8O4B L4O5CO4AP8L8O3A"));
+  while (sequencerIsReady()==false);
   play(F("L16 CD#AD#O4CO3D#AD#O4CO3D#AD# CD#AD#O4CO3D#AD#O4CO3D#AD# O2BO3EAEBEAEBEAE DEG#EBEG#EBEG#E AO4AGFEAEDCECO3B AO4AEDCECO3BAO4CO3AG L8F#DF#AL4O4C L16O3BO4GF#EDGDCO3BO4DO3BA GO4GFEDFDCO3BO4DO3BA"));
+  while (sequencerIsReady()==false);
   play(F("L2O4FL16FEFD ECEGO5CO4GECP16O4GO5CO4B"));
+  while (sequencerIsReady()==false);
   play(F("L4O5CO4L2G L8GL16FEL2F L8FL16EDL4EL16ECO3GO4C O3FO4CDCO3BGBO4CDO3GO4DE L4.FL8GL4E L16EFEL32FDL32DEDEDEDEDEDEDEDEL4.DL8C L16CO5CO4BAGO5CO4FO5CO4EO5CO4DO5C O4CO5CO4BAGCFCECDC P16O3EGBO4CEGBL4O5C"));
+  while (sequencerIsPlaying()==true);
   delay(2000);  
-#endif
+
 } // end of setup()
 
 void loop()
