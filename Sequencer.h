@@ -83,8 +83,8 @@ enum flats {
 };
 #endif
 
-#define REST      0         // 0 is a special case for no note
-#define END       255       // end of note table flag
+#define REST      0xfe      // 0 is a special case for no note
+#define END       0xff      // end of note table flag
 
 // Durations
 #define L128      128       // 128th note
@@ -115,9 +115,13 @@ enum flats {
 
 bool sequencerStart();
 bool sequencerStop();
+bool sequencerIsPlaying();
+bool sequencerIsReady();
 bool sequencerPut(byte track, byte note, byte noteLength);
 bool sequencerGet(byte track, byte *note, byte *noteLength);
 bool sequencerHandler();
+
+unsigned int sequencerBufferAvailable();
 
 #endif // SEQUENCER_H
 

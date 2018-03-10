@@ -1,7 +1,7 @@
 //#define DEBUG_SEQUENCER
 /*---------------------------------------------------------------------------*/
 /*
-Music Sequencer
+Sequencer
 By Allen C. Huffman
 www.subethasoftware.com
 
@@ -20,7 +20,10 @@ VERSION HISTORY:
 2018-03-07 0.2 allenh - Making note length match CoCo PLAY command.
 
 TODO:
-* ...
+* Use one large buffer, with the restriction that sequences have to be
+  added full track at a time. This would work with the PLAY command parser,
+  but maybe is not the best generic solution. More thought needed.
+* Super-secret features.  
 
 TOFIX:
 * ...
@@ -44,7 +47,7 @@ TOFIX:
 #endif
 
 #define MAX_TRACKS  1
-#define MAX_STEPS   100 // 255 max
+#define MAX_STEPS   255 // 255 max
 
 /*---------------------------------------------------------------------------*/
 // STATIC GLOBALS
@@ -65,13 +68,7 @@ static byte           S_ready[MAX_TRACKS] = {0};
 /*---------------------------------------------------------------------------*/
 
 /*
- * Start the specified sequence.
- * 
- * *sequence[] - pointer to sequence structure
- * 
- * tracks - how many tracks it contains
- * 
- * tempo - tempo multiplier (1=fast, XX=slower)
+ * Start squencer.
  */
 bool sequencerStart()
 {
@@ -118,6 +115,7 @@ bool sequencerStart()
   return status;
 } // end of sequencerStart()
 
+/*---------------------------------------------------------------------------*/
 
 bool sequencerStop()
 {
@@ -126,6 +124,43 @@ bool sequencerStop()
   return true;
 }
 
+/*---------------------------------------------------------------------------*/
+
+bool sequencerIsPlaying()
+{
+  return sequencerHandler();
+}
+
+/*---------------------------------------------------------------------------*/
+
+bool sequencerIsReady()
+{
+  return (sequencerBufferAvailable() > (MAX_STEPS/2));
+}
+
+/*---------------------------------------------------------------------------*/
+/*
+ * Return the largest amount of buffer available. Eventually, we'll use one
+ * global buffer and this will be better.
+ */
+unsigned int sequencerBufferAvailable()
+{
+  unsigned int track;
+  byte largestBufferAvailable;
+
+  sequencerHandler();
+
+  largestBufferAvailable = 0;
+  for (track = 0; track < MAX_TRACKS; track++)
+  {
+    if (S_ready[track] > largestBufferAvailable)
+    {
+      largestBufferAvailable = (MAX_STEPS - S_ready[track]);
+    }
+  }
+
+  return largestBufferAvailable;
+}
 
 /*---------------------------------------------------------------------------*/
 /*
