@@ -60,9 +60,7 @@ byte lineInput(char *cmdLine, byte len)
     //ledBlink();
  
     // Call handler so notes can fade, etc. in the "background".
-#if !defined(SIRSOUNDJR)
-    playHandler();
-#endif
+    sequencerHandler();
 
     ch = -1; // -1 is no data available
 
