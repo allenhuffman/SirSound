@@ -194,6 +194,9 @@ void playWorker(unsigned int commandPtr, byte stringType)
 
     switch( commandChar )
     {
+      case '\"': // ignore quotes for testing.
+        break;
+        
       case '\0':
         value = 1; // no error
         done = true;
@@ -356,7 +359,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
 
           unsigned long duration;
           // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-          duration = (256/value/g_Tempo);
+          duration = (255/value/g_Tempo);
           
           // Convert to 60/second
           // tm/60 = ms/1000
@@ -483,7 +486,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         unsigned long duration, dotDuration;
 
         // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-        duration = (256/g_NoteLn/g_Tempo);
+        duration = (255/g_NoteLn/g_Tempo);
 
         if (dotVal != 0)
         {
