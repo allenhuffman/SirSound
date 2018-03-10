@@ -206,7 +206,9 @@ bool sequencerPut(byte track, byte note, byte noteLength)
   return status;
 } // end of sequencerAdd()
 
-static bool sequencerGet(byte track, byte *note, byte *noteLength)
+/*---------------------------------------------------------------------------*/
+
+bool sequencerGet(byte track, byte *note, byte *noteLength)
 {
   bool status;
 
