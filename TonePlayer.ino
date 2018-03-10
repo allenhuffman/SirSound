@@ -211,13 +211,14 @@ static const uint16_t g_ToneTable[] PROGMEM =
  */
 void tonePlayNote(byte note, unsigned long duration)
 {
-//#if defined(DEBUG_TONEPLAYER)
+  // Cease any note currently playing, first.
+  noTone(TONE_PIN);
+
   TONEPLAYER_PRINT(F(" PlayNote("));
   TONEPLAYER_PRINT(note);
   TONEPLAYER_PRINT(F(", "));
   TONEPLAYER_PRINT(duration);
   TONEPLAYER_PRINT(F(") "));
-//#endif
 
   if (note >= sizeof(g_ToneTable)/sizeof(g_ToneTable[0]))
   {
@@ -227,12 +228,13 @@ void tonePlayNote(byte note, unsigned long duration)
     return;
   }
 
-  // Cease any note currently playing, first.
-  noTone(TONE_PIN);
-  tone(TONE_PIN, pgm_read_word_near(&g_ToneTable[note]), duration);
+  if (duration == 0)
+  {
+    duration = 1;
+  }
 
+  tone(TONE_PIN, pgm_read_word_near(&g_ToneTable[note]), duration);
   //delay(duration);
-  
   //noTone(TONE_PIN);
 }
 
