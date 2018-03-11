@@ -46,8 +46,8 @@ TOFIX:
 #define SEQUENCER_PRINTLN(...)
 #endif
 
-#define MAX_TRACKS  1
-#define MAX_STEPS   255 // 255 max
+#define MAX_TRACKS  3
+#define MAX_STEPS   200 // 255 max
 
 /*---------------------------------------------------------------------------*/
 // STATIC GLOBALS
@@ -168,13 +168,14 @@ unsigned int sequencerBufferAvailable()
 bool sequencerPut(byte track, byte note, byte noteLength)
 {
   bool status;
-  
-  if (S_ready[track] < MAX_STEPS)
+
+  if ((track < MAX_TRACKS) && (S_ready[track] < MAX_STEPS))
   {
+    SEQUENCER_PRINT(F("T:"));
     SEQUENCER_PRINT(track);
-    SEQUENCER_PRINT(F(":"));
+    SEQUENCER_PRINT(F("-"));
     SEQUENCER_PRINT(S_nextIn[track]);
-    SEQUENCER_PRINT(F(" add: "));
+    SEQUENCER_PRINT(F(" put: "));
     SEQUENCER_PRINT(note);
     SEQUENCER_PRINT(F(", "));
     SEQUENCER_PRINT(noteLength);
@@ -199,6 +200,9 @@ bool sequencerPut(byte track, byte note, byte noteLength)
   }
   else
   {
+    SEQUENCER_PRINT(F("Invalid track put: "));
+    SEQUENCER_PRINTLN(track);
+
     status = false;
   }
   
@@ -216,6 +220,9 @@ bool sequencerGet(byte track, byte *note, byte *noteLength)
     *note = S_sequence[track][S_nextOut[track]].note;
     *noteLength = S_sequence[track][S_nextOut[track]].noteLength;
 
+    SEQUENCER_PRINT(F("T:"));
+    SEQUENCER_PRINT(track);
+    SEQUENCER_PRINT(F("-"));
     SEQUENCER_PRINT(S_nextOut[track]);
     SEQUENCER_PRINT(F(" get: "));
     SEQUENCER_PRINT(*note);
@@ -345,7 +352,7 @@ bool sequencerHandler()
 #if defined(SIRSOUNDJR)
       tonePlayNote(note, ms);
 #else
-      playNote(0, note);
+      playNote(track, note);
 #endif
       S_playNextTime[track] = S_playNextTime[track] + ms;
 

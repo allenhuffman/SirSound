@@ -1,4 +1,5 @@
-#define SIRSOUNDJR
+//#define SIRSOUNDJR
+#define USE_SEQUENCER
 /*---------------------------------------------------------------------------*/
 /*
 SirSound serial sound card driver
@@ -173,6 +174,7 @@ void setup()
   while (sequencerIsPlaying()==true);
   delay(2000);
 #endif
+#if 0
   Serial.println(F("Super Mario Brothers"));
   play(F("Z T6"));
   // From http://www.mariopiano.com/Mario-Sheet-Music-Overworld-Main-Theme.pdf
@@ -266,6 +268,12 @@ void setup()
   // Peter Gunn: L8 CCDCL>DD+L<CFE
   // Popeye:     L16 EGGGL<FL>EL<GL>
 /*
+Frogger (2-voice):
+T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+ ,
+T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+
+*/
+
+/*
 1000 CLS:PRINT@43,"SINFONIA"
 1010 PRINT@73,"BY J.S. BACH"
 1020 PRINT@139,"ARRANGED"
@@ -295,8 +303,14 @@ void setup()
   play(F("L2O4FL16FEFD ECEGO5CO4GECP16O4GO5CO4B"));
   while (sequencerIsReady()==false);
   play(F("L4O5CO4L2G L8GL16FEL2F L8FL16EDL4EL16ECO3GO4C O3FO4CDCO3BGBO4CDO3GO4DE L4.FL8GL4E L16EFEL32FDL32DEDEDEDEDEDEDEDEL4.DL8C L16CO5CO4BAGO5CO4FO5CO4EO5CO4DO5C O4CO5CO4BAGCFCECDC P16O3EGBO4CEGBL4O5C"));
-
   while (sequencerIsPlaying()==true);
+#endif
+
+  Serial.println(F("Frogger"));
+  play(F("T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+,"
+         "T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+"));
+  while (sequencerIsPlaying()==true);
+  //delay(2000);
 } // end of setup()
 
 void loop()

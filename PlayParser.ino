@@ -1,4 +1,4 @@
-#define DEBUG_PLAYPARSER // enable debug output
+//#define DEBUG_PLAYPARSER // enable debug output
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -182,12 +182,14 @@ void playWorker(unsigned int commandPtr, byte stringType)
   byte    dotVal;
   byte    noteDuration;
   byte    dotDuration;
+  byte    currentTrack;
 
   if (commandPtr == 0) return;
 
   done = false;
   value = 0; // force ?FC ERROR
   dotVal = 0; // Start out with no dotted value.
+  currentTrack = 0; // Start loading first track.
   do
   {
     #if defined(USE_SEQUENCER)
@@ -368,8 +370,8 @@ void playWorker(unsigned int commandPtr, byte stringType)
           // Create 60hz timing from Tempo and NoteLn (matching CoCo).
           noteDuration = (255/value/g_Tempo);
           
-#if defined(USE_SEQUENCER)          
-          sequencerPut(0, REST, noteDuration);
+#if defined(USE_SEQUENCER)
+          sequencerPut(currentTrack, REST, noteDuration);
 #else
           // Convert to 60/second
           // tm/60 = ms/1000
@@ -394,6 +396,15 @@ void playWorker(unsigned int commandPtr, byte stringType)
         g_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
         g_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
         g_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
+        break;
+
+      case ',': // comma, next track
+        PLAYPARSER_PRINTLN(F(" + [Next Track]"));
+        // Mark end of current track sequence.
+        //sequencerPut(currentTrack, END_OF_SEQUENCE, 0);
+        currentTrack++;
+        // No error checking, since we don't know the capabilities
+        // of the music player.
         break;
       /*-----------------------------------------------------*/
 
@@ -510,7 +521,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // Sequencer is based on 88-key piano keyboard. PLAY command
         // starts at the 27th note on a piano keyboard, so we add
         // that offset.
-        sequencerPut(0, 27+note+(12*(g_Octave-1)), noteDuration);
+        sequencerPut(currentTrack, 27+note+(12*(g_Octave-1)), noteDuration);
 #else
         // Convert from 60/second to ms
         // tm/60 = ms/1000
