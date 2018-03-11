@@ -153,12 +153,11 @@ unsigned int sequencerBufferAvailable()
   largestBufferAvailable = 0;
   for (track = 0; track < MAX_TRACKS; track++)
   {
-    if (S_ready[track] > largestBufferAvailable)
+    if ((MAX_STEPS - S_ready[track]) > largestBufferAvailable)
     {
       largestBufferAvailable = (MAX_STEPS - S_ready[track]);
     }
   }
-
   return largestBufferAvailable;
 }
 
