@@ -1,4 +1,4 @@
-//#define SIRSOUNDJR
+#define SIRSOUNDJR
 /*---------------------------------------------------------------------------*/
 /*
 SirSound serial sound card driver
@@ -26,7 +26,7 @@ TOFIX:
 */
 /*---------------------------------------------------------------------------*/
 
-#define SIRSOUND_VERSION "0.3"
+#define SIRSOUND_VERSION "0.4"
 
 #include <SoftwareSerial.h>
 #include "Sequencer.h"
@@ -114,8 +114,8 @@ void setup()
     lineInput(buffer, sizeof(buffer));
     if (strncmp_P(buffer, PSTR("BYE"), 3)==0) break;
     play(buffer);
+    while (sequencerIsReady()==false);
   }
-
 #if 0
   Serial.println(F("Volume (not implemented):"));
   play(F("Z"));
@@ -173,7 +173,6 @@ void setup()
   while (sequencerIsPlaying()==true);
   delay(2000);
 #endif
-
   Serial.println(F("Super Mario Brothers"));
   play(F("Z T6"));
   // From http://www.mariopiano.com/Mario-Sheet-Music-Overworld-Main-Theme.pdf
