@@ -15,6 +15,7 @@ Extended Color BASIC.
 2018-03-03 0.00 allenh - Most things seem to work now.
 2018-03-04 0.00 allenh - Supports Flash-strings. Tweaking debug output.
 2018-03-05 0.00 allenh - Fixed issue with dotted notes.
+2018-03-11 1.00 allenh - Merging standalone player with SirSound player.
 
 TODO:
 * DONE: Data needs to be moved to PROGMEM.
@@ -25,7 +26,10 @@ TODO:
 * Use variables to support Xvar$; and =var; 
 
 TOFIX:
-* ...
+* Dotted notes do not work like the real PLAY command, so really long notes
+  do not work. They will max out at a note length of 255 (60/sec) which is
+  4 seconds. Since only one byte is being used for the note length, anything
+  longer currently is not supported. But it could be, if it needs to be.
 
 NOTE
 ----
@@ -105,7 +109,7 @@ the same as if the out-of-range value was used.
 /*---------------------------------------------------------------------------*/
 // PROTOTYPES
 /*---------------------------------------------------------------------------*/
-#include "SN76489.h"        // for NOTES, etc.
+
 
 /*---------------------------------------------------------------------------*/
 // DEFINES
@@ -176,6 +180,8 @@ void playWorker(unsigned int commandPtr, byte stringType)
   byte    value;
   byte    note;
   byte    dotVal;
+  byte    noteDuration;
+  byte    dotDuration;
 
   if (commandPtr == 0) return;
 
@@ -184,8 +190,10 @@ void playWorker(unsigned int commandPtr, byte stringType)
   dotVal = 0; // Start out with no dotted value.
   do
   {
+    #if defined(USE_SEQUENCER)
     // Handle sequencer during parsing of long strings.
     sequencerHandler();
+    #endif
     
     // L9A43
     // L9B98
@@ -357,21 +365,19 @@ void playWorker(unsigned int commandPtr, byte stringType)
         {
           PLAYPARSER_PRINT(value);
 
-          unsigned long duration;
           // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-          duration = (255/value/g_Tempo);
+          noteDuration = (255/value/g_Tempo);
           
+#if defined(USE_SEQUENCER)          
+          sequencerPut(0, REST, noteDuration);
+#else
           // Convert to 60/second
           // tm/60 = ms/1000
           // ms=(tm/60)*1000
           // no floating point needed this way
           // (tm*1000)/60
-          //duration = (duration*1000)/60;
-          //delay(duration);
-          
-          sequencerPut(0, REST, duration);
-          
-          dotVal = 0;
+          delay((noteDuration*1000L)/60L);
+#endif
         }
         else
         {
@@ -482,35 +488,43 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // PROCESS NOTE HERE!
         /*--------------------------------------------------------*/
         
-        // Convert tempo and length to milliseconds
-        unsigned long duration, dotDuration;
+        // Convert tempo and length into note duration.
+        noteDuration = (255/g_NoteLn/g_Tempo);
 
-        // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-        duration = (255/g_NoteLn/g_Tempo);
-
+        // Add on dotted notes.
         if (dotVal != 0)
         {
-          dotDuration = (duration / 2 );
+          dotDuration = (noteDuration / 2 );
 
-          while(dotVal > 0)
+          // Prevent note duration rollover since we currently do not
+          // support a duration larger than 255. Would it be better to
+          // just max out at 255 for the longest note possible?
+          while((dotVal > 0) && (noteDuration < (255-dotDuration)))
           {
-            duration = duration + dotDuration;
+            noteDuration = noteDuration + dotDuration;
             dotVal--;
           }
         }
         
-        // Add on dotted notes.
-
-        // Convert to 60/second
+#if defined(USE_SEQUENCER)
+        // Sequencer is based on 88-key piano keyboard. PLAY command
+        // starts at the 27th note on a piano keyboard, so we add
+        // that offset.
+        sequencerPut(0, 27+note+(12*(g_Octave-1)), noteDuration);
+#else
+        // Convert from 60/second to ms
         // tm/60 = ms/1000
         // ms=(tm/60)*1000
         // no floating point needed this way
         // (tm*1000)/60
-
-        //duration = (duration*1000)/60;
-        //tonePlayNote(27+note+(12*(g_Octave-1)), duration);
+        unsigned long msDuration = ((noteDuration*1000L)/60L);
         
-        sequencerPut(0, 27+note+(12*(g_Octave-1)), duration);
+        // TonePlayer is based on 88-key piano keyboard. PLAY command
+        // starts at the 27th note on a piano keyboard, so we add
+        // that offset.
+        tonePlayNote(27+note+(12*(g_Octave-1)), msDuration);
+        delay(msDuration);
+#endif
         break;
         
     } // end switch( commandChar );
@@ -522,11 +536,13 @@ void playWorker(unsigned int commandPtr, byte stringType)
     PLAYPARSER_PRINTLN();
     PLAYPARSER_PRINT(F("?FC ERROR"));
   }
+#if defined(USE_SEQUENCER)
   else
   {
     // End of PLAY string. Start playing.
     sequencerStart();
   }
+#endif
 
   PLAYPARSER_PRINTLN();
   //PLAYPARSER_PRINTLN(F("End."));
