@@ -265,6 +265,10 @@ bool sequencerHandler()
   uint8_t       note, noteLength;
   unsigned long timeNow;
 
+#if !defined(SIRSOUNDJR)
+  playHandler();
+#endif
+
   if (S_sequencesToPlay == 0)
   {
     return false;
@@ -339,8 +343,11 @@ bool sequencerHandler()
       unsigned long ms = (noteLength*1000L)/60L;
 
       // if (note != REST) ?
+#if defined(SIRSOUNDJR)
       tonePlayNote(note, ms);
-
+#else
+      playNote(0, note);
+#endif
       S_playNextTime[track] = S_playNextTime[track] + ms;
 
       SEQUENCER_PRINT(F(" (time: "));

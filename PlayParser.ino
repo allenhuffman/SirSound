@@ -507,29 +507,10 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // no floating point needed this way
         // (tm*1000)/60
 
-#if defined(SIRSOUNDJR)
         //duration = (duration*1000)/60;
         //tonePlayNote(27+note+(12*(g_Octave-1)), duration);
         
         sequencerPut(0, 27+note+(12*(g_Octave-1)), duration);
-#else
-        duration = (duration*1000)/60;
-        // convert 1-31 to 14(low) to 1(max)
-        setMaxVolume( (15-(g_Volume / 2)) );
-        playNote(0, 27+note+(12*(g_Octave-1)));
-
-        unsigned long stopPlayingAt = millis() + duration;
-        while( (long)millis() < stopPlayingAt)
-        {
-          playHandler();
-        }
-
-  #define VOL_OFF     0b00001111  // 15
-  #define VOL_LOW     0b00001010  // 10
-  #define VOL_MED     0b00000101  // 5
-  #define VOL_MAX     0b00000000  // 0
-        setMaxVolume(VOL_OFF);
-#endif
         break;
         
     } // end switch( commandChar );

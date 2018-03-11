@@ -1,3 +1,4 @@
+#if !defined(SIRSOUNDJR)
 //#define DEBUG_SN76849
 /*---------------------------------------------------------------------------*/
 /*
@@ -44,8 +45,6 @@ TOFIX:
 /*---------------------------------------------------------------------------*/
 
 #define SN76489_VERSION "0.6"
-
-#if !defined(SIRSOUNDJR)
 
 #include "SN76489.h"
 
@@ -554,8 +553,7 @@ static void poke(byte b)
   digitalWrite(SN76489_WE, HIGH);
 } // end of poke()
 
-#endif // !SIRSOUNDJR
-
 /*---------------------------------------------------------------------------*/
 // End of SN76489.ino
+#endif // !SIRSOUNDJR
 

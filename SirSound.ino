@@ -1,4 +1,4 @@
-#define SIRSOUNDJR
+//#define SIRSOUNDJR
 /*---------------------------------------------------------------------------*/
 /*
 SirSound serial sound card driver
@@ -101,7 +101,6 @@ void setup()
 
 #if !defined(SIRSOUNDJR)
   setMaxVolume( 0 ); // 0=high, 15=silent
-
   muteAll(); // Just in case...
 #endif
 
@@ -117,6 +116,7 @@ void setup()
     play(buffer);
   }
 
+#if 0
   Serial.println(F("Volume (not implemented):"));
   play(F("Z"));
   play(F("Z V1 C V5 C V10 C V15 C V20 C V25 C V31 C"));
@@ -172,6 +172,7 @@ void setup()
   //while (sequencerIsReady()==false);
   while (sequencerIsPlaying()==true);
   delay(2000);
+#endif
 
   Serial.println(F("Super Mario Brothers"));
   play(F("Z T6"));
@@ -342,9 +343,7 @@ void loop()
         //Serial.print(incomingByte, HEX);
       }
     }
-#if !defined(SIRSOUNDJR)
-    playHandler();
-#endif
+
     sequencerHandler();
   }// end while
 } // end of loop()
