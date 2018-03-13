@@ -1,4 +1,4 @@
-//#define DEBUG_SEQUENCER
+#define DEBUG_SEQUENCER
 /*---------------------------------------------------------------------------*/
 /*
 Sequencer
@@ -18,6 +18,7 @@ VERSION HISTORY:
 2017-03-01 0.0 allenh - In the beginning...
 2017-03-06 0.1 allenh - Using renamed playHandler() function. Comments.
 2018-03-07 0.2 allenh - Making note length match CoCo PLAY command.
+2018-03-13 0.3 allenh - Improve time sync between tracks.
 
 TODO:
 * Use one large buffer, with the restriction that sequences have to be
@@ -164,8 +165,11 @@ unsigned int sequencerBufferAvailable()
 /*---------------------------------------------------------------------------*/
 /*
  * Add something to sequencer buffer.
+ * 
+ * note = 0-127
+ * length 1-256, but saved as 0-255
  */
-bool sequencerPut(byte track, byte note, byte noteLength)
+bool sequencerPut(byte track, byte note, unsigned int noteLength)
 {
   bool status;
 
@@ -182,6 +186,16 @@ bool sequencerPut(byte track, byte note, byte noteLength)
     SEQUENCER_PRINT(F(" -> "));
 
     S_sequence[track][S_nextIn[track]].note = note;
+
+    // To make the timing math work, it uses 256. But we only store it as
+    // a byte (0-255). Since 0 is an invalid time, we treat this as base-0
+    // and add one.    
+    if (noteLength > 255)
+    {
+      noteLength = 0;
+    }
+    // TODO: Error checking to reject anything too large.
+
     S_sequence[track][S_nextIn[track]].noteLength = noteLength;
     
     S_nextIn[track]++;
@@ -211,7 +225,12 @@ bool sequencerPut(byte track, byte note, byte noteLength)
 
 /*---------------------------------------------------------------------------*/
 
-bool sequencerGet(byte track, byte *note, byte *noteLength)
+/*
+ * 
+ * note = 0-127
+ * length 1-256, but saved as 0-255
+ */
+bool sequencerGet(byte track, byte *note, unsigned int *noteLength)
 {
   bool status;
 
@@ -219,6 +238,13 @@ bool sequencerGet(byte track, byte *note, byte *noteLength)
   {
     *note = S_sequence[track][S_nextOut[track]].note;
     *noteLength = S_sequence[track][S_nextOut[track]].noteLength;
+    // To make the timing math work, it uses 256. But we only store it as
+    // a byte (0-255). Since 0 is an invalid time, we treat this as base-0
+    // and add one.    
+    if (*noteLength == 0)
+    {
+      *noteLength = 256;
+    }
 
     SEQUENCER_PRINT(F("T:"));
     SEQUENCER_PRINT(track);
@@ -268,7 +294,8 @@ bool sequencerGet(byte track, byte *note, byte *noteLength)
 bool sequencerHandler()
 {
   unsigned int  track;
-  uint8_t       note, noteLength;
+  byte          note;
+  unsigned int  noteLength;
   unsigned long timeNow;
 
 #if !defined(SIRSOUNDJR)
@@ -338,15 +365,17 @@ bool sequencerHandler()
         break;
       } // end of if (sequencerGet
   
-      SEQUENCER_PRINT(F("V"));
+      SEQUENCER_PRINT(S_playNextTime[track]);
+      SEQUENCER_PRINT(F(" V"));
       SEQUENCER_PRINT(track, DEC);
       SEQUENCER_PRINT(F(":"));
       SEQUENCER_PRINT(note);
       SEQUENCER_PRINT(F(","));
       SEQUENCER_PRINT(noteLength);
-      SEQUENCER_PRINT(F(" "));
-  
+      SEQUENCER_PRINT(F(" ("));
       unsigned long ms = (noteLength*1000L)/60L;
+      SEQUENCER_PRINT(ms);
+      SEQUENCER_PRINT(F("ms) "));
 
       // if (note != REST) ?
 #if defined(SIRSOUNDJR)
@@ -356,7 +385,7 @@ bool sequencerHandler()
 #endif
       S_playNextTime[track] = S_playNextTime[track] + ms;
 
-      SEQUENCER_PRINT(F(" (time: "));
+      SEQUENCER_PRINT(F(" (next: "));
       SEQUENCER_PRINT(S_playNextTime[track]);
       SEQUENCER_PRINTLN(F(") "));
     } // end of if ( (long)(millis() > S_playNextTime[track]) )

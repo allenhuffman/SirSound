@@ -180,8 +180,8 @@ void playWorker(unsigned int commandPtr, byte stringType)
   byte    value;
   byte    note;
   byte    dotVal;
-  byte    noteDuration;
-  byte    dotDuration;
+  unsigned int    noteDuration; // 0-256
+  unsigned int    dotDuration;  // 0-256
   byte    currentTrack;
 
   if (commandPtr == 0) return;
@@ -368,7 +368,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
           PLAYPARSER_PRINT(value);
 
           // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-          noteDuration = (255/value/g_Tempo);
+          noteDuration = (256/value/g_Tempo);
           
 #if defined(USE_SEQUENCER)
           sequencerPut(currentTrack, REST, noteDuration);
@@ -500,7 +500,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         /*--------------------------------------------------------*/
         
         // Convert tempo and length into note duration.
-        noteDuration = (255/g_NoteLn/g_Tempo);
+        noteDuration = (256/g_NoteLn/g_Tempo);
 
         // Add on dotted notes.
         if (dotVal != 0)
@@ -510,7 +510,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
           // Prevent note duration rollover since we currently do not
           // support a duration larger than 255. Would it be better to
           // just max out at 255 for the longest note possible?
-          while((dotVal > 0) && (noteDuration < (255-dotDuration)))
+          while((dotVal > 0) && (noteDuration < (256-dotDuration)))
           {
             noteDuration = noteDuration + dotDuration;
             dotVal--;

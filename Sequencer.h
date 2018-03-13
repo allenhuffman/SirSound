@@ -117,8 +117,8 @@ bool sequencerStart();
 bool sequencerStop();
 bool sequencerIsPlaying();
 bool sequencerIsReady();
-bool sequencerPut(byte track, byte note, byte noteLength);
-bool sequencerGet(byte track, byte *note, byte *noteLength);
+bool sequencerPut(byte track, byte note, unsigned int noteLength);
+bool sequencerGet(byte track, byte *note, unsigned int *noteLength);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();
