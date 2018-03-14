@@ -27,7 +27,9 @@ POKE 150,X - where 'x' is one of the following:
 * 18 = 2400 
 * 7 = 4800 
 * 1 = 9600
-```POKE 150,41```
+```
+POKE 150,41
+```
 
 MC-10 Printer Baud
 ------------------
