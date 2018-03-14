@@ -51,7 +51,11 @@ TOFIX:
 #define SEQUENCER_PRINTLN(...)
 #endif
 
+#if defined(SIRSOUNDJR)
+#define MAX_TRACKS 1
+#else
 #define MAX_TRACKS  3
+#endif
 #define BUFFER_SIZE 300 // 255 max
 
 /*---------------------------------------------------------------------------*/
