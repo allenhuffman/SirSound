@@ -26,26 +26,31 @@ When using letters, they can be optionally followed by "#" or "+" to make it
 as sharp, or "-" to make it flat. When using numbers, they must be separated
 by a ";" (semicolon).
 ```
-        C  C# D  D# E  F  F# G  G# A  A# B  (sharps)
-        1  2  3  4  5  6  7  8  9  10 11 12
-        C  D- D  E- E  F  G- G  A- A  B- B  (flats)
+C  C# D  D# E  F  F# G  G# A  A# B  (sharps)
+1  2  3  4  5  6  7  8  9  10 11 12
+C  D- D  E- E  F  G- G  A- A  B- B  (flats)
 ```
 Due to how the original PLAY command was coded by Microsoft, it also allows
 sharps and flats that would normally not be allowed. For instance, E# is the
 same as F, and F- is the same a E. Since notes are numbered 1-12, the code
 did not allow C- or B#. This quirk is replicated in this implementation.
+```
+PRINT #-2,"CDEFGAB"
+````
 
 OCTAVE
 ------
 "O" followed by a number from 1 to 5. Default is octave 2, which includes
 middle C. (Supports modifiers.)
+```
+PRINT #-2,"O1 C O2 C O3 C O4 C O5 C"
+```
 
 LENGTH
 ------
 "L" followed by a number from 1 to 255, with an optional "." after it to
 add an additional 1/2 of the specified length. i.e., L4 is a quarter note,
 L4. is like L4+L8 (dotted quarter note). Default is 2. (Supports modifiers.)
-
 * L1 - whole note
 * L2 - 1/2 half node
 * L3 - dotted quarter note (L4.)
@@ -54,23 +59,36 @@ L4. is like L4+L8 (dotted quarter note). Default is 2. (Supports modifiers.)
 * L16 - 1/16 note
 * L32 - 1/32 note
 * L64 - 1/64 note
+```
+PRINT #-2,"L2 C D E L8 F D L4 E D C"
+```
 
 TEMPO
 -----
 "T" followed by a number from 1-255. Default is 2. (Supports modifiers.)
+```
+PRINT #-2,"T2 C D E T4 C D E T 8 C D E"
+```
 
 VOLUME
 ------
 "V" followed by a number from 1-31. Default is 15. (Supports modifiers.)
 (Does nothing on the Arduino.)
+```
+PRINT #-2,"V31"
+```
 
 PAUSE
 -----
 "P" followed by a number from 1-255.
+```
+PRINT #-2,"P4"
+```
 
 SUBSTRINGS
 ----------
-NOT IMPLEMENTED YET. To be documented, since we will need a special method to load them befoe we can use them.
+"X" followed by a 1-2 character string name (previously loaded using "+") and the dollar sign.
+
  
 Non-Standard Extensions
 -----------------------
@@ -83,6 +101,12 @@ Non-Standard Extensions
 "*" to stop the sequencer and abort playback.
 
 "@xxx" repeat the sequence 'xxx' times from this marker up to the next repeat marker or end of sequence.
+
+"+xx=yyyy" add named substring (up to two characters, with the first being A-Z and the second being A-Z or 0-9). The substring will be available for use with the "X" command.
+
+"-xx" delete named substring.
+
+
 
 MODIFIERS
 ---------
