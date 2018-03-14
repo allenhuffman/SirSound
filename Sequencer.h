@@ -41,7 +41,11 @@ typedef struct {
 
 //#define HIGHEST_NOTE  NC8 // It is really NC9, beyond piano.
 
-#define END_OF_SEQUENCE 255
+#define CMD_BIT             0b10000000 // bit(7)
+#define CMD_MASK            0b01110000
+#define CMD_REPEAT          0b10010000
+
+#define END_OF_SEQUENCE     0b11111111 // 255
 
 //
 // These are defines for the 88 notes on a piano. Not all the notes are
@@ -117,8 +121,10 @@ bool sequencerStart();
 bool sequencerStop();
 bool sequencerIsPlaying();
 bool sequencerIsReady();
-bool sequencerPut(byte track, byte note, unsigned int noteLength);
-bool sequencerGet(byte track, byte *note, unsigned int *noteLength);
+bool sequencerPut(byte track, byte value);
+bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
+bool sequencerGet(byte track, byte *value);
+//bool sequencerGet(byte track, byte *note, unsigned int *noteLength);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();

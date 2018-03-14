@@ -371,7 +371,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
           noteDuration = (256/value/g_Tempo);
           
 #if defined(USE_SEQUENCER)
-          sequencerPut(currentTrack, REST, noteDuration);
+          sequencerPutNote(currentTrack, REST, noteDuration);
 #else
           // Convert to 60/second
           // tm/60 = ms/1000
@@ -521,7 +521,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // Sequencer is based on 88-key piano keyboard. PLAY command
         // starts at the 27th note on a piano keyboard, so we add
         // that offset.
-        sequencerPut(currentTrack, 27+note+(12*(g_Octave-1)), noteDuration);
+        sequencerPutNote(currentTrack, 27+note+(12*(g_Octave-1)), noteDuration);
 #else
         // Convert from 60/second to ms
         // tm/60 = ms/1000
