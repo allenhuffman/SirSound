@@ -20,6 +20,7 @@ VERSION HISTORY:
 2018-03-07 0.2 allenh - Making note length match CoCo PLAY command.
 2018-03-13 0.3 allenh - Improve time sync between tracks.
 2018-03-13 0.4 allenh - Rewrite sequencer buffer system.
+2018-03-13 0.5 allenh - Adding STOP.
 
 TODO:
 * Use one large buffer, with the restriction that sequences have to be
@@ -35,7 +36,7 @@ TOFIX:
 */
 /*---------------------------------------------------------------------------*/
 
-#define SEQUENCER_VERSION "0.4"
+#define SEQUENCER_VERSION "0.5"
 
 #include "Sequencer.h"
 
@@ -126,7 +127,19 @@ bool sequencerStart()
 
 bool sequencerStop()
 {
-  //S_playing = false;
+  byte track;
+
+  SEQUENCER_PRINTLN(F("STOP!"));
+
+  for (track = 0; track < MAX_TRACKS; track++)
+  {
+    S_trackPlaying[track] = false;
+    S_nextIn[track] = 0;
+    S_nextOut[track] = 0;
+    S_ready[track] = 0;
+  }
+  S_sequencesToPlay = 0;
+  S_tracksPlaying = 0;
 
   return true;
 }

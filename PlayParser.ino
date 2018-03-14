@@ -406,6 +406,12 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // No error checking, since we don't know the capabilities
         // of the music player.
         break;
+
+      case '*': // asterisk - stop!
+        PLAYPARSER_PRINTLN(F(" * [Stop]"));
+        sequencerStop();
+        return true;
+        break;
       /*-----------------------------------------------------*/
 
       // L9AEB
