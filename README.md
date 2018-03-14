@@ -17,6 +17,44 @@ TBA
 
 RUNNING
 =======
+SirSound always powers up defaulting to 1200 baud. The computer must be set to match the baud rate:
+Color Computer Printer Baud
+---------------------------
+POKE 150,X - where 'x' is one of the following:
+* 180 = 300 baud
+* 87 = 600
+* 41 = 1200 
+* 18 = 2400 
+* 7 = 4800 
+* 1 = 9600
+```POKE 150,41```
+
+MC-10 Printer Baud
+------------------
+POKE 16932,X - where "X" is one of the following:
+* 241 = 300 
+* 118 = 600 
+* 57 = 1200 
+* 26 = 2400 
+* 10 = 4800 
+* 9 = 9600
+```
+POKE 16932,57
+```
+
+NOTE: SirSound supports up to three play strings to be played at the same time. SirSound Jr supports only one.
+```
+PRINT #-2,"voice 1 play string{,voice 2 play string,voice 3 play string}"
+```
+To play a single-voice tune:
+```
+PRINT #-2,"CEGFEFDE"
+```
+To play a chord of C, E and G:
+```
+PRINT #-2,"C,E,G"
+```
+
 Standard PLAY commands:
 
 NOTE
@@ -98,15 +136,45 @@ Non-Standard Extensions
 * Note Length (1-255, default 4) - quarter note
 * Tempo (1-255, default 2)
 
-"*" to stop the sequencer and abort playback.
+"*" to stop the sequencer and discard any queued playback.
+
+"TBD" to pause the specified track.
+```
+REM PAUSE VOICE 1
+PRINT #-2,"TBA"
+REM PAUSE VOICE 3
+PRINT #-2,",,TBA"
+```
+
+"TBD" to resume the specified track.
+```
+REM RESUME VOICE 1
+PRINT #-2,"TBA"
+REM RESUME VOICE 3
+PRINT #-2,",,TBA"
+```
 
 "@xxx" repeat the sequence 'xxx' times from this marker up to the next repeat marker or end of sequence.
+```
+REM REPEAT FIVE TIMES
+PRINT #-2,"@5 O1 L8 C C E E G G A A"
+REM REPEAT FOREVER
+PRINT #-2,"@0 O1 L2 C P2 C+ P2"
+```
 
 "+xx=yyyy" add named substring (up to two characters, with the first being A-Z and the second being A-Z or 0-9). The substring will be available for use with the "X" command.
 
 "-xx" delete named substring.
 
-
+"#xxxx" change the baud rate of SirSound to xxxx. SirSound always powers up using 1200 baud.
+````
+REM SET COCO TO 1200 BAUD
+POKE 150,41
+REM SET SIRSOUND TO 9600 BAUD
+PRINT #-2,"#9600"
+REM SET COCO TO 9600 BAUD
+POKE 150,1
+```
 
 MODIFIERS
 ---------
