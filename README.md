@@ -17,7 +17,9 @@ TBA
 
 RUNNING
 =======
+
 SirSound always powers up defaulting to 1200 baud. The computer must be set to match the baud rate:
+
 Color Computer Printer Baud
 ---------------------------
 POKE 150,X - where 'x' is one of the following:
@@ -28,6 +30,7 @@ POKE 150,X - where 'x' is one of the following:
 * 7 = 4800 
 * 1 = 9600
 ```
+REM SET COCO BAUD TO 1200
 POKE 150,41
 ```
 
@@ -41,6 +44,7 @@ POKE 16932,X - where "X" is one of the following:
 * 10 = 4800 
 * 9 = 9600
 ```
+REM SET MC-10 BAUD TO 1200
 POKE 16932,57
 ```
 
@@ -50,10 +54,12 @@ PRINT #-2,"voice 1 play string{,voice 2 play string,voice 3 play string}"
 ```
 To play a single-voice tune:
 ```
+REM PLAY A SINGLE VOICE TUNE
 PRINT #-2,"CEGFEFDE"
 ```
 To play a chord of C, E and G:
 ```
+REM PLAY A 3-VOICE C CHORD
 PRINT #-2,"C,E,G"
 ```
 
@@ -75,7 +81,7 @@ sharps and flats that would normally not be allowed. For instance, E# is the
 same as F, and F- is the same a E. Since notes are numbered 1-12, the code
 did not allow C- or B#. This quirk is replicated in this implementation.
 ```
-PRINT #-2,"CDEFGAB"
+PRINT #-2,"C D E F G A B"
 ````
 
 OCTAVE
@@ -83,6 +89,7 @@ OCTAVE
 "O" followed by a number from 1 to 5. Default is octave 2, which includes
 middle C. (Supports modifiers.)
 ```
+REM PLAY C FROM OCTAVE 1 TO 5
 PRINT #-2,"O1 C O2 C O3 C O4 C O5 C"
 ```
 
@@ -169,7 +176,7 @@ PRINT #-2,"@0 O1 L2 C P2 C+ P2"
 "-xx" delete named substring.
 
 "#xxxx" change the baud rate of SirSound to xxxx. SirSound always powers up using 1200 baud.
-````
+```
 REM SET COCO TO 1200 BAUD
 POKE 150,41
 REM SET SIRSOUND TO 9600 BAUD
