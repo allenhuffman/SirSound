@@ -18,6 +18,7 @@ TOFIX:
 
 #define TONEPLAYER_VERSION "1.00"
 
+void tonePlayNote(byte note, unsigned long duration);
 
 /*---------------------------------------------------------------------------*/
 // DEFINES
@@ -41,7 +42,7 @@ TOFIX:
  */
 /* Dummy notes we can't play, to match piano keyboard. */
 #define TONE_A0  31
-#define TONE_AS0  31
+#define TONE_AS0 31
 
 /* Lowest note tone() can play */
 #define TONE_B0  31
