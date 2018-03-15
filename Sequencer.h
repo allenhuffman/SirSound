@@ -1,3 +1,8 @@
+// BOF preprocessor bug prevent - insert me on top of your arduino-code
+// From: http://www.a-control.de/arduino-fehler/?lang=en
+#if 1
+__asm volatile ("nop");
+#endif
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 /*---------------------------------------------------------------------------*/
@@ -42,10 +47,14 @@ typedef struct {
 //#define HIGHEST_NOTE  NC8 // It is really NC9, beyond piano.
 
 #define CMD_BIT             0b10000000 // bit(7)
-#define CMD_MASK            0b01110000
-#define CMD_REPEAT          0b10010000
+#define CMD_MASK            0b11110000
+#define CMD_VALUE_MASK      0b00001111
+#define CMD_REPEAT          0b10010000 // TODO: fix this nicer.
+#define CMD_END_SEQUENCE    0b11110000
 
-#define END_OF_SEQUENCE     0b11111111 // 255
+#define REST                0b00001111
+
+//#define END_OF_SEQUENCE     0b11111111 // 255
 
 //
 // These are defines for the 88 notes on a piano. Not all the notes are
@@ -86,9 +95,6 @@ enum flats {
   NC8 // 1
 };
 #endif
-
-#define REST      0xfe      // 0 is a special case for no note
-#define END       0xff      // end of note table flag
 
 // Durations
 #define L128      128       // 128th note

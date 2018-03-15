@@ -1,4 +1,4 @@
-//#define DEBUG_PLAYPARSER // enable debug output
+#define DEBUG_PLAYPARSER // enable debug output
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -16,6 +16,7 @@ Extended Color BASIC.
 2018-03-04 0.00 allenh - Supports Flash-strings. Tweaking debug output.
 2018-03-05 0.00 allenh - Fixed issue with dotted notes.
 2018-03-11 1.00 allenh - Merging standalone player with SirSound player.
+2018-03-14 1.00 allenh - Adding support for REPEAT.
 
 TODO:
 * DONE: Data needs to be moved to PROGMEM.
@@ -407,11 +408,46 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // of the music player.
         break;
 
+#if defined(USE_SEQUENCER)
       case '*': // asterisk - stop!
         PLAYPARSER_PRINTLN(F(" * [Stop]"));
         sequencerStop();
         return true;
         break;
+
+      case '@': // at sign - repeat
+        //  R - repeat (1-15)
+        PLAYPARSER_PRINT(F(" @"));
+
+        commandChar = getNextCommand(&commandPtr, stringType);
+        // Done if there is no more.
+        if (commandChar == '\0')
+        {
+          value = 0; // ?FC ERROR
+          done = true;
+          break;
+        }
+
+        // since =var; is not supported, we default to note length
+        value = checkForVariableOrNumeric(&commandPtr, stringType, commandChar, 1);
+        if (value > 0)
+        {
+          PLAYPARSER_PRINT(value);
+
+          if (value > 0x0f) // 0-15 allowed (4-bits)
+          {
+            value = 0x0f;
+          }
+          sequencerPutByte(currentTrack, (CMD_REPEAT | value));
+        }
+        else
+        {
+          value = 0; // ?FC ERROR
+          done = true;
+        }
+        break;
+#endif // USE_SEQUENCER
+
       /*-----------------------------------------------------*/
 
       // L9AEB
@@ -710,7 +746,7 @@ byte checkModifier(unsigned int *ptr, byte stringType, byte value)
 byte checkForVariableOrNumeric(unsigned int *ptr, byte stringType, char commandChar, byte value)
 {
   //byte      value = 0;
-  uint16_t  temp; // MUL A*B = D
+  unsigned int  temp; // MUL A*B = D
 
   switch( commandChar )
   {
