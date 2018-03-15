@@ -1,5 +1,6 @@
-//#define SIRSOUNDJR
+#define SIRSOUNDJR
 #define USE_SEQUENCER
+//#define USE_SOFTSERIAL
 /*---------------------------------------------------------------------------*/
 /*
 SirSound serial sound card driver
@@ -29,7 +30,9 @@ TOFIX:
 
 #define SIRSOUND_VERSION "0.4"
 
+#if defined(USE_SOFTSERIAL)
 #include <SoftwareSerial.h>
+#endif
 #include "Sequencer.h"
 #include "SN76489.h"
 
@@ -40,9 +43,11 @@ TOFIX:
 #define BAUD_COCO       1200
 #define BAUD_CONSOLE    115200
 
+#if defined(USE_SOFTSERIAL)
 SoftwareSerial CoCoSerial(RX_PIN_COCO, TX_PIN_COCO); // RX, TX
-
+#else
 #define CoCoSerial Serial
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -105,8 +110,9 @@ void setup()
   muteAll(); // Just in case...
 #endif
 
-  play(F("T8O2L4EEP4EP4CEP4GZ"));
+  play(F("T8P4O2L4EEP4EP4CEP4GZ"));
 
+#if 0
   // Input and Play routine.
   char buffer[80];
   while(1)
@@ -117,6 +123,7 @@ void setup()
     play(buffer);
     while (sequencerIsReady()==false);
   }
+#endif
 #if 0
   Serial.println(F("Volume (not implemented):"));
   play(F("Z"));
@@ -269,8 +276,11 @@ void setup()
   // Popeye:     L16 EGGGL<FL>EL<GL>
 /*
 Frogger (2-voice):
-T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+ ,
-T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+
+T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+ ,
+T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+
+
+Donkey Kong:
+T3O1L8CP4L8EP8L8GAG
 */
 
 /*
@@ -305,12 +315,13 @@ T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+
   play(F("L4O5CO4L2G L8GL16FEL2F L8FL16EDL4EL16ECO3GO4C O3FO4CDCO3BGBO4CDO3GO4DE L4.FL8GL4E L16EFEL32FDL32DEDEDEDEDEDEDEDEL4.DL8C L16CO5CO4BAGO5CO4FO5CO4EO5CO4DO5C O4CO5CO4BAGCFCECDC P16O3EGBO4CEGBL4O5C"));
   while (sequencerIsPlaying()==true);
 #endif
-
+#if 0
   Serial.println(F("Frogger"));
   play(F("T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+,"
          "T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+"));
   while (sequencerIsPlaying()==true);
   //delay(2000);
+#endif
 } // end of setup()
 
 void loop()
@@ -321,6 +332,7 @@ void loop()
 
   digitalWrite(LED_PIN, HIGH);
 
+  Serial.println(F("loop"));
   while(1)
   {
     // send data only when you receive data:
