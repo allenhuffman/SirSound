@@ -77,7 +77,17 @@ C  D- D  E- E  F  G- G  A- A  B- B  (flats)
 ```
 Due to how the original PLAY command was coded by Microsoft, it also allows sharps and flats that would normally not be allowed. For instance, E# is the same as F, and F- is the same a E. Since notes are numbered 1-12, the code did not allow C- or B#. This quirk is replicated in this implementation.
 ```
-PRINT #-2,"C D E F G A B"
+REM LETTERS AND # SHARPS
+PRINT #-2,"C C# D D# E F F# G G# A A# B"
+
+REM LETTERS AND + SHARPS
+PRINT #-2,"C C+ D D+ E F F+ G G+ A A+ B"
+
+REM LETTERS AND - FLATS
+PRINT #-2,@C D- D E- E F G- G A- A B- B"
+
+REM PLAY NOTES USING NUMBERS
+PRINT #-2,"1;2;3;4;5;6;7;8;9;10;11;12"
 ````
 
 OCTAVE
@@ -112,17 +122,27 @@ PRINT #-2,"T2 C D E T4 C D E T 8 C D E"
 
 VOLUME
 ------
-"V" followed by a number from 1-31. Default is 15. (Supports modifiers.)
-(Not supported on SirSound Jr.)
+"V" followed by a number from 1-31. Default is 15. Supports modifiers. (Not supported on SirSound Jr.)
 ```
+REM SET VOLUME TO MAX
 PRINT #-2,"V31"
+
+REM SET VOLUME TO LOWEST
+PRINT #-2,"V1"
+
+REM LOUD TO SOFT
+PRINT #-2,"V31 C V21 C V11 C V1 C"
 ```
 
 PAUSE
 -----
 "P" followed by a number from 1-255.
 ```
+REM PAUSE FOR A QUARTER NOTE
 PRINT #-2,"P4"
+
+REM PAUSE FOR A HALF NOTE
+PRINT #-2,"P2"
 ```
 
 SUBSTRINGS
@@ -131,6 +151,7 @@ SUBSTRINGS
 ```
 REM LOAD A SUBSTRING
 PRINT #-2,"+V1$=CDEFGABC"
+
 REM PLAY A SUBSTRING
 PRINT #-2,"XV1$;"
 ```
@@ -177,6 +198,7 @@ PAUSE SEQUENCER
 ```
 REM PAUSE VOICE 1
 PRINT #-2,"TBA"
+
 REM PAUSE VOICE 3
 PRINT #-2,",,TBA"
 ```
@@ -187,6 +209,7 @@ RESUME SEQUENCER
 ```
 REM RESUME VOICE 1
 PRINT #-2,"TBA"
+
 REM RESUME VOICE 3
 PRINT #-2,",,TBA"
 ```
@@ -197,6 +220,7 @@ REPEAT FOLLOWING SEQUENCE
 ```
 REM PLAY THEN REPEAT FOUR MORE TIMES
 PRINT #-2,"@4 O1 L8 C C E E G G A A"
+
 REM REPEAT FOREVER
 PRINT #-2,"@0 O1 L2 C P2 C+ P2"
 ```
