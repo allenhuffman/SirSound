@@ -1,4 +1,4 @@
-#define SIRSOUNDJR
+//#define SIRSOUNDJR
 #define USE_SEQUENCER
 //#define USE_SOFTSERIAL
 /*---------------------------------------------------------------------------*/
@@ -106,7 +106,7 @@ void setup()
 #endif // !SIRSOUNDJR
 
 #if !defined(SIRSOUNDJR)
-  setMaxVolume( 0 ); // 0=high, 15=silent
+  setVolumeAll(0); // 0=high, 15=silent
   muteAll(); // Just in case...
 #endif
 

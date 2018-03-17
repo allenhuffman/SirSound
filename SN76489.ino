@@ -143,6 +143,14 @@ TOFIX:
 /*---------------------------------------------------------------------------*/
 // INTERNAL DEFINES
 /*---------------------------------------------------------------------------*/
+#if defined(DEBUG_SN76489)
+#define SN76489_PRINT(...)   Serial.print(__VA_ARGS__)
+#define SN76489_PRINTLN(...) Serial.println(__VA_ARGS__)
+#else
+#define SN76489_PRINT(...)
+#define SN76489_PRINTLN(...)
+#endif
+
 // 1CCTDDDD - 1=Latch+Data, CC=Channel, T=Type, DDDD=Data1
 #define LATCH_CMD     0b10000000
 
@@ -181,10 +189,11 @@ TOFIX:
 /*---------------------------------------------------------------------------*/
 // STATIC GLOBALS
 /*---------------------------------------------------------------------------*/
-static byte     S_volume = VOL_MAX;  // Default maximum volume.
+// Default maximum volume.
+static byte     S_volume[4] = {VOL_MAX, VOL_MAX, VOL_MAX, VOL_MAX};
 
 /* Default to off. */
-static uint8_t  S_vol[4] = { VOL_OFF, VOL_OFF, VOL_OFF, VOL_OFF };
+static uint8_t  S_currentVolume[4] = { VOL_OFF, VOL_OFF, VOL_OFF, VOL_OFF };
 
 // SN76489 note table.
 // This table defines the values used to represent all 88 notes of a piano.
@@ -324,7 +333,8 @@ static const uint16_t PROGMEM G_notes[88] = {
 /*---------------------------------------------------------------------------*/
 // INTERNAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
-void poke(uint8_t);
+void poke( uint8_t );
+void pokeVolume( byte volume );
 
 /*---------------------------------------------------------------------------*/
 // EXTERNAL FUNCTIONS
@@ -352,14 +362,8 @@ void initSN76489()
 }
 
 /*---------------------------------------------------------------------------*/
-// PUBLIC API:
-//
-// playNote( channel, note ) - called to play a tone.
-//
-// playHandler() - called in main loop to handle ADSR of notes.
-//
-// volume( channel, volume )
-//
+// PUBLIC FUNCTIONS:
+/*---------------------------------------------------------------------------*/
 
 /*
  * Play a tone on a specified channel.
@@ -378,7 +382,7 @@ void playNote(byte channel, uint16_t note)
       // 0 is used for a rest (note off).
       if (note == 0)
       {
-        setVolume( channel, VOL_OFF );
+        pokeVolume( channel, VOL_OFF );
       }
       else
       {
@@ -402,10 +406,10 @@ void playNote(byte channel, uint16_t note)
         }
 
         /* Set channel to default volume. */
-        setVolume(channel, S_volume);
+        pokeVolume(channel, S_volume[channel]);
         
         /* Cache the volume level so we can use it later. */
-        S_vol[channel] = S_volume;
+        S_currentVolume[channel] = S_volume[channel];
 
       } // end of if (note==0) else
     } // end of if (channel <= 3)
@@ -413,8 +417,8 @@ void playNote(byte channel, uint16_t note)
     else // not if (channel <= 3)
     {
       // Channel >3! Error.
-      Serial.print(F("Invalid channel (0-3 allowed): "));
-      Serial.println(channel );
+      SN76489_PRINT(F("Invalid channel (0-3 allowed): "));
+      SN76489_PRINTLN(channel);
     }
 #endif
   } // end of if (note < sizeof(g_notes4mhz))
@@ -422,8 +426,8 @@ void playNote(byte channel, uint16_t note)
   else // note is higher than the table contains.
   {
     // Note >88! Error.
-    Serial.print(F("Invalid note (0-87 allowed): "));
-    Serial.println(note);
+    SN76489_PRINT(F("Invalid note (0-87 allowed): "));
+    SN76489_PRINTLN(note);
   }
 #endif
 } // end of play()
@@ -431,61 +435,51 @@ void playNote(byte channel, uint16_t note)
 /*---------------------------------------------------------------------------*/
 
 /*
- * Set volume of specified channel.
- * 
- * channel  = 0-3
- * volume   = VOL_OFF - VOL_MAX
+ * Set maximum volume level for all channels.
  */
 void setVolume( byte channel, byte volume )
 {
   /* Convert channel 0-3 to bits. */
   if (channel <= 3)
   {
-    /* Shift 00000011 five places to the left. */
-    poke( LATCH_CMD | (channel << 5) | TYPE_VOL | (volume & 0b1111) );
+    // Update our global static variable.
+    S_volume[channel] = (volume & 0b1111);
 
-      // Update our static.
-    S_vol[channel] = volume;
-
-  } // end of if (channel <= 3)
+    SN76489_PRINT(channel);
+    SN76489_PRINT(F(" vol: "));
+    SN76489_PRINTLN(volume);
+  }
 #if defined(DEBUG_SN76489)
   else // channel is higher than 3.
   {
     // Channel >3! Error.
-    Serial.print(F("Invalid channel (0-3 allowed): "));
-    Serial.println(channel);
+    SN76489_PRINT(F("Invalid channel (0-3 allowed): "));
+    SN76489_PRINTLN(channel);
   }
 #endif
 } // end of setVolume()
 
 /*---------------------------------------------------------------------------*/
 
-/*
- * Set maximum volume level for all channels.
- */
-void setMaxVolume( byte volume )
+void setVolumeAll( byte volume )
 {
-  // Update our global static variable.
-  S_volume = (volume & 0b1111);
-
-#if defined(DEBUG_SN76489)
-    // Channel >3! Error.
-    Serial.print(F("setMaxVolume: "));
-    Serial.println(volume);
-#endif
-} // end of setMaxVolume()
+  setVolume(0, volume);
+  setVolume(1, volume);
+  setVolume(2, volume);
+  setVolume(3, volume);
+} // end of setVolumeAll()
 
 /*---------------------------------------------------------------------------*/
 
 /*
- * Issue Volume 0 to all four channels.
+ * Issue Volume OFF to all four channels.
  */
 void muteAll()
 {
-  setVolume(0, VOL_OFF);
-  setVolume(1, VOL_OFF);
-  setVolume(2, VOL_OFF);
-  setVolume(3, VOL_OFF);
+  pokeVolume(0, VOL_OFF);
+  pokeVolume(1, VOL_OFF);
+  pokeVolume(2, VOL_OFF);
+  pokeVolume(3, VOL_OFF);
 } // end of muteAll()
 
 /*---------------------------------------------------------------------------*/
@@ -506,16 +500,18 @@ void playHandler()
     for (int i = 0; i < 3; i++)
     {
       /* If voice volume is not off... */
-      if (S_vol[i] != VOL_OFF)
+      if (S_currentVolume[i] != VOL_OFF)
       {
         /* Decrement volume. */
-        S_vol[i] = S_vol[i] + VOL_DEC;
-        setVolume(i, S_vol[i]);
+        S_currentVolume[i] = S_currentVolume[i] + VOL_DEC;
+        pokeVolume(i, S_currentVolume[i]);
       }
     }
   }
 } // end of playHandler()
 
+/*---------------------------------------------------------------------------*/
+// INTERNAL FUNCTIONS
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -552,6 +548,36 @@ static void poke(byte b)
 
   digitalWrite(SN76489_WE, HIGH);
 } // end of poke()
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * Set volume of specified channel.
+ * 
+ * channel  = 0-3
+ * volume   = VOL_OFF - VOL_MAX
+ */
+void pokeVolume( byte channel, byte volume )
+{
+  /* Convert channel 0-3 to bits. */
+  if (channel <= 3)
+  {
+    /* Shift 00000011 five places to the left. */
+    poke( LATCH_CMD | (channel << 5) | TYPE_VOL | (volume & 0b1111) );
+
+    // Update our static.
+    S_currentVolume[channel] = volume;
+
+  } // end of if (channel <= 3)
+#if defined(DEBUG_SN76489)
+  else // channel is higher than 3.
+  {
+    // Channel >3! Error.
+    SN76489_PRINT(F("Invalid channel (0-3 allowed): "));
+    SN76489_PRINTLN(channel);
+  }
+#endif
+} // end of pokeVolume()
 
 /*---------------------------------------------------------------------------*/
 // End of SN76489.ino

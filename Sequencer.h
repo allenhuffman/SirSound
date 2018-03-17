@@ -49,8 +49,9 @@ typedef struct {
 #define CMD_BIT             0b10000000 // bit(7)
 #define CMD_MASK            0b11110000
 #define CMD_VALUE_MASK      0b00001111
-#define CMD_REPEAT          0b10010000 // TODO: fix this nicer.
-#define CMD_END_SEQUENCE    0b11110000
+#define CMD_VOLUME          0b10000000 // 0
+#define CMD_REPEAT          0b10010000 // 1
+#define CMD_END_SEQUENCE    0b11110000 // 15
 
 #define REST                0b00001111
 

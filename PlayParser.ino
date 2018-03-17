@@ -279,6 +279,14 @@ void playWorker(unsigned int commandPtr, byte stringType)
         {
           PLAYPARSER_PRINT(value);
           g_Volume = value;
+#if defined(USE_SEQUENCER)
+          // Sequencer allows volume 0-15, so divide by 2.
+          // TODO: PLAY does not allow volume 0, so we really need to scale
+          // this from 1-31 (31) to 1-15 (15).
+          value = (value >> 1);
+          value = (value & CMD_VALUE_MASK);
+          sequencerPutByte(currentTrack, (CMD_VOLUME | value));
+#endif
         }
         else
         {
@@ -397,6 +405,9 @@ void playWorker(unsigned int commandPtr, byte stringType)
         g_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
         g_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
         g_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
+#if !defined(SIRSOUNDJR)
+        setVolumeAll(0);
+#endif
         break;
 
       case ',': // comma, next track

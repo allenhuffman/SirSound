@@ -31,14 +31,9 @@ void initSN76489();
 
 // API:
 void playNote(byte channel, uint16_t note);
-void setVolume( byte channel, byte volume );
-void setMaxVolume( byte volume );
-
-// TODO: Channel 3 "noise" is not really supported yet.
-
 void playHandlder();
-
-// Convienience functions.
+void setVolume( byte channel, byte volume );
+void setVolumeAll( byte volume );
 void muteAll();
 
 #endif // SN76849_H

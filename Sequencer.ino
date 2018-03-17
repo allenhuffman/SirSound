@@ -22,6 +22,7 @@ VERSION HISTORY:
 2018-03-13 0.4 allenh - Rewrite sequencer buffer system.
 2018-03-13 0.5 allenh - Adding STOP.
 2018-03-14 0.6 allenh - Adding REPEAT.
+2018-03-16 0.7 allenh - Adding VOLUME command for sound chip.
 
 TODO:
 * Use one large buffer, with the restriction that sequences have to be
@@ -37,7 +38,7 @@ TOFIX:
 */
 /*---------------------------------------------------------------------------*/
 
-#define SEQUENCER_VERSION "0.5"
+#define SEQUENCER_VERSION "0.7"
 
 #include "Sequencer.h"
 
@@ -398,10 +399,10 @@ bool sequencerHandler()
         if (value & CMD_BIT) // Is it a command byte?
         {
           byte cmd;
-          //byte cmdValue;
+          byte cmdValue;
 
           cmd = (value & CMD_MASK);
-          //cmdValue = (value & CMD_VALUE_MASK);
+          cmdValue = (value & CMD_VALUE_MASK);
 
           if (cmd == CMD_END_SEQUENCE)
           {
@@ -439,6 +440,17 @@ bool sequencerHandler()
             }
             break;
           } // end of if (value == END_OF_SEQUENCE)
+#if !defined(SIRSOUNDJR) // No volume on Arduino tone()      
+          else if (cmd==CMD_VOLUME)
+          {
+            SEQUENCER_PRINT(F("setVolume: "));
+            SEQUENCER_PRINT(track);
+            SEQUENCER_PRINT(F(", "));
+            SEQUENCER_PRINTLN(15-cmdValue);
+            // Volume is 0-15, but sound chip is 15 (off) to 0 (max).
+            setVolume(track, (15-cmdValue) );
+          }
+#endif
         }
         else // !CMD_BIT - not a command.
         {
