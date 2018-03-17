@@ -124,7 +124,7 @@ the same as if the out-of-range value was used.
 #endif
 
 // 9C5B - Table of numerical note values for letter notes.
-static const byte G_NoteJumpTable[7] PROGMEM =
+static const byte S_NoteJumpTable[7] PROGMEM =
 {
   /*   A,  B, C, D, E, F, G */
   /**/10, 12, 1, 3, 5, 6, 8 
@@ -142,10 +142,10 @@ static const byte G_NoteJumpTable[7] PROGMEM =
 #define DEFAULT_NOTELN 4
 #define DEFAULT_TEMPO  2
 
-static byte G_Octave = DEFAULT_OCTAVE; // Octave (1-5, default 2)
-static byte G_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
-static byte G_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
-static byte G_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
+static byte S_Octave = DEFAULT_OCTAVE; // Octave (1-5, default 2)
+static byte S_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
+static byte S_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
+static byte S_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
 
 /*---------------------------------------------------------------------------*/
 
@@ -256,11 +256,11 @@ void playWorker(unsigned int commandPtr, byte stringType)
         PLAYPARSER_PRINT(F(" O"));
         // O - octave (1-5, default 2)
         //    Modifiers
-        value = checkModifier(&commandPtr, stringType, G_Octave);
+        value = checkModifier(&commandPtr, stringType, S_Octave);
         if (value >=1 && value <= 5)
         {
           PLAYPARSER_PRINT(value);
-          G_Octave = value;
+          S_Octave = value;
         }
         else
         {
@@ -274,11 +274,11 @@ void playWorker(unsigned int commandPtr, byte stringType)
         //  V - volume (1-31, default 15)
         PLAYPARSER_PRINT(F(" V"));
         //    Mofifiers
-        value = checkModifier(&commandPtr, stringType, G_Volume);
+        value = checkModifier(&commandPtr, stringType, S_Volume);
         if (value >=1 && value <= 31)
         {
           PLAYPARSER_PRINT(value);
-          G_Volume = value;
+          S_Volume = value;
 #if defined(USE_SEQUENCER)
           // Sequencer allows volume 0-15, so divide by 2.
           // TODO: PLAY does not allow volume 0, so we really need to scale
@@ -300,11 +300,11 @@ void playWorker(unsigned int commandPtr, byte stringType)
         //  L - note length
         PLAYPARSER_PRINT(F(" L"));
         //    Modifiers
-        value = checkModifier(&commandPtr, stringType, G_NoteLn);
+        value = checkModifier(&commandPtr, stringType, S_NoteLn);
         if (value > 0 )
         {
           PLAYPARSER_PRINT(value);
-          G_NoteLn = value;
+          S_NoteLn = value;
         }
         else
         {
@@ -343,11 +343,11 @@ void playWorker(unsigned int commandPtr, byte stringType)
         //  T - tempo (1-255, default 2)
         PLAYPARSER_PRINT(F(" T"));
         //    Modifiers
-        value = checkModifier(&commandPtr, stringType, G_Tempo);
+        value = checkModifier(&commandPtr, stringType, S_Tempo);
         if (value > 0)
         {
           PLAYPARSER_PRINT(value);
-          G_Tempo = value;
+          S_Tempo = value;
         }
         else
         {
@@ -371,13 +371,13 @@ void playWorker(unsigned int commandPtr, byte stringType)
         }
 
         // since =var; is not supported, we default to note length
-        value = checkForVariableOrNumeric(&commandPtr, stringType, commandChar, G_NoteLn);
+        value = checkForVariableOrNumeric(&commandPtr, stringType, commandChar, S_NoteLn);
         if (value > 0)
         {
           PLAYPARSER_PRINT(value);
 
           // Create 60hz timing from Tempo and NoteLn (matching CoCo).
-          noteDuration = (256/value/G_Tempo);
+          noteDuration = (256/value/S_Tempo);
           
 #if defined(USE_SEQUENCER)
           sequencerPutNote(currentTrack, REST, noteDuration);
@@ -401,10 +401,10 @@ void playWorker(unsigned int commandPtr, byte stringType)
       // Non-standard PLAY extensions:
       case 'Z': // reset
         PLAYPARSER_PRINT(F(" Z [Defaults]"));
-        G_Octave = DEFAULT_OCTAVE; // Octave (1-5, default 2)
-        G_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
-        G_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
-        G_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
+        S_Octave = DEFAULT_OCTAVE; // Octave (1-5, default 2)
+        S_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
+        S_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
+        S_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
 #if !defined(SIRSOUNDJR)
         setVolumeAll(0);
 #endif
@@ -487,7 +487,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         {
           //PLAYPARSER_PRINT("A-G ");
           // Get numeric note value of letter note. (0-11)
-          note = pgm_read_byte_near(&G_NoteJumpTable[commandChar - 'A']);
+          note = pgm_read_byte_near(&S_NoteJumpTable[commandChar - 'A']);
           // note is now 1-12
 
           PLAYPARSER_PRINT(F(" "));
@@ -553,7 +553,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         /*--------------------------------------------------------*/
         
         // Convert tempo and length into note duration.
-        noteDuration = (256/G_NoteLn/G_Tempo);
+        noteDuration = (256/S_NoteLn/S_Tempo);
 
         // Add on dotted notes.
         if (dotVal != 0)
@@ -574,7 +574,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // Sequencer is based on 88-key piano keyboard. PLAY command
         // starts at the 27th note on a piano keyboard, so we add
         // that offset.
-        sequencerPutNote(currentTrack, 27+note+(12*(G_Octave-1)), noteDuration);
+        sequencerPutNote(currentTrack, 27+note+(12*(S_Octave-1)), noteDuration);
 #else
         // Convert from 60/second to ms
         // tm/60 = ms/1000
@@ -586,7 +586,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // TonePlayer is based on 88-key piano keyboard. PLAY command
         // starts at the 27th note on a piano keyboard, so we add
         // that offset.
-        tonePlayNote(27+note+(12*(g_Octave-1)), msDuration);
+        tonePlayNote(27+note+(12*(S_Octave-1)), msDuration);
         delay(msDuration);
 #endif
         break;
