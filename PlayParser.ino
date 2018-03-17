@@ -423,7 +423,9 @@ void playWorker(unsigned int commandPtr, byte stringType)
       case '*': // asterisk - stop!
         PLAYPARSER_PRINTLN(F(" * [Stop]"));
         sequencerStop();
-        return true;
+        //return true;
+        // continue parsing anything after it.
+        // TODO: Maybe silence other channels?
         break;
 
       case '@': // at sign - repeat
@@ -457,6 +459,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
           done = true;
         }
         break;
+              
 #endif // USE_SEQUENCER
 
       /*-----------------------------------------------------*/
