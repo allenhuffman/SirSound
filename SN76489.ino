@@ -33,18 +33,20 @@ VERSION HISTORY:
 2017-03-26 0.5 allenh - NANO and Teensy 2.0 defines. Cleanup.
 2018-02-18 0.6 allenh - Using boards.txt defines for Teensy/Nano support.
                         NANO pin defines redone for ease of wiring.
+2018-03-16 0.7 allenh - Updating VOLUME support.
 
 TODO:
 * Add ADSR support (instead of just fade/decay) to playHandler().
 * Add real support for Channel 3 "noise".
 
 TOFIX:
-* ...
+* Volume decay needs to be updated to decay over a set time, so low volume
+  notes don't blip off so quickly.
 
 */
 /*---------------------------------------------------------------------------*/
 
-#define SN76489_VERSION "0.6"
+#define SN76489_VERSION "0.7"
 
 #include "SN76489.h"
 
