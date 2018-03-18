@@ -31,12 +31,12 @@ TOFIX:
 /*---------------------------------------------------------------------------*/
 // STRUCTURES
 /*---------------------------------------------------------------------------*/
-
+/*
 typedef struct {
   byte note;
   byte noteLength;
 } MusicStruct;
-
+*/
 /*---------------------------------------------------------------------------*/
 // DEFINES / ENUMS
 /*---------------------------------------------------------------------------*/
@@ -51,11 +51,23 @@ typedef struct {
 #define CMD_VALUE_MASK      0b00001111
 #define CMD_VOLUME          0b10000000 // 0
 #define CMD_REPEAT          0b10010000 // 1
-#define CMD_END_SEQUENCE    0b11110000 // 15
+#define CMD_INTERRUPT       0b10100000 // 2
+#define CMD_ADD_SUBSTRING   0b10110000 // 3
+#define CMD_DEL_SUBSTRING   0b11000000 // 4
+#define CMD_PLAY_SUBSTRING  0b11010000 // 5
+#define CMD_6               0b11100000 // 6
+#define CMD_END_SEQUENCE    0b11110000 // 7
 
-#define REST                0b00001111
+#define REST                0b01111111 // 127
 
-//#define END_OF_SEQUENCE     0b11111111 // 255
+enum {
+  TRACK_IDLE,
+  TRACK_PLAYING,
+  TRACK_COMPLETE,
+  TRACK_INTERRUPTED
+};
+
+#define NOT_PLAYING 0xffff // max unsigned int
 
 //
 // These are defines for the 88 notes on a piano. Not all the notes are
@@ -126,12 +138,12 @@ enum flats {
 
 bool sequencerStart();
 bool sequencerStop();
+bool sequencerInterrupt();
 bool sequencerIsPlaying();
 bool sequencerIsReady();
 bool sequencerPut(byte track, byte value);
 bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
 bool sequencerGet(byte track, byte *value);
-//bool sequencerGet(byte track, byte *note, unsigned int *noteLength);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();

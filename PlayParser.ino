@@ -1,4 +1,4 @@
-#define DEBUG_PLAYPARSER // enable debug output
+//#define DEBUG_PLAYPARSER
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -81,7 +81,7 @@ PAUSE
 
 SUBSTRINGS
 ----------
-To be documented, since we will need a special method to load them befoe
+To be documented, since we will need a special method to load them before
 we can use them.
 
 Non-Standard Extensions
@@ -133,6 +133,9 @@ static const byte S_NoteJumpTable[7] PROGMEM =
 #define STRINGTYPE_RAM   0
 #define STRINGTYPE_FLASH 1
 
+#define MAX_SUBSTRINGS      16  // 0-15
+#define SUBSTRING_NAME_LEN  2   // xx$
+
 /*---------------------------------------------------------------------------*/
 // GLOBALS
 /*---------------------------------------------------------------------------*/
@@ -146,6 +149,9 @@ static byte S_Octave = DEFAULT_OCTAVE; // Octave (1-5, default 2)
 static byte S_Volume = DEFAULT_VOLUME; // Volume (1-31, default 15)
 static byte S_NoteLn = DEFAULT_NOTELN; // Note Length (1-255, default 4) - quarter note
 static byte S_Tempo  = DEFAULT_TEMPO;  // Tempo (1-255, default 2)
+
+// Substring index.
+static char S_substringName[MAX_SUBSTRINGS][SUBSTRING_NAME_LEN];
 
 /*---------------------------------------------------------------------------*/
 
@@ -413,7 +419,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
       case ',': // comma, next track
         PLAYPARSER_PRINTLN(F(" + [Next Track]"));
         // Mark end of current track sequence.
-        //sequencerPut(currentTrack, END_OF_SEQUENCE, 0);
+        //sequencerPut(currentTrack, CMD_END_SEQUENCE);
         currentTrack++;
         // No error checking, since we don't know the capabilities
         // of the music player.
@@ -428,8 +434,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         // TODO: Maybe silence other channels?
         break;
 
-      case '@': // at sign - repeat
-        //  R - repeat (1-15)
+      case '@': // at sign - repeat (1-15)
         PLAYPARSER_PRINT(F(" @"));
 
         commandChar = getNextCommand(&commandPtr, stringType);
@@ -459,7 +464,26 @@ void playWorker(unsigned int commandPtr, byte stringType)
           done = true;
         }
         break;
-              
+
+      case '^': //  ^ - Interrupt
+        PLAYPARSER_PRINT(F(" ^ [Interrupt]"));
+        sequencerPutByte(currentTrack, CMD_INTERRUPT);
+        break;
+
+      case '+': // + - Add substring
+        PLAYPARSER_PRINT(F(" + [Add]"));
+        // Get 1-2 characters, up to $;
+        // Translate to number 0-X
+        // sequencerPutByte(currentTrack, (CMD_ADD_SUBSTRING | value));
+        break;
+
+      case '-': // + - Delete substring
+        PLAYPARSER_PRINT(F(" - [Delete]"));
+        // Get 1-2 characters, up to $;
+        // Translate to number 0-X
+        // sequencerPutByte(currentTrack, (CMD_DEL_SUBSTRING | value));
+        break;
+
 #endif // USE_SEQUENCER
 
       /*-----------------------------------------------------*/
@@ -837,6 +861,120 @@ byte checkForVariableOrNumeric(unsigned int *ptr, byte stringType, char commandC
   } // end of switch( commandChar )
 
   return value;
+}
+
+/*---------------------------------------------------------------------------*/
+// SUBSTRINGS
+/*---------------------------------------------------------------------------*/
+
+static void clearSubstrings()
+{
+  byte index;
+
+  for (index=0; index < MAX_SUBSTRINGS; index++)
+  {
+    S_substringName[index][0] = '\0';
+  }
+}
+
+static bool addSubstring(char *name, byte *number)
+{
+  bool status;
+  byte index;
+
+  if ((name==NULL) || (number==NULL)) return false;
+
+  if (getSubstring(name, number)==true)
+  {
+    // Already exists.
+    status = true;
+  }
+  else // Does not exist. Find empty slot and add.
+  {
+    // Find empty slot.
+    for (index=0; index < MAX_SUBSTRINGS; index++)
+    {
+      if (S_substringName[index][0] == '\0')
+      {
+        break;
+      }
+    }
+
+    if (index < MAX_SUBSTRINGS)
+    {
+      strncpy(S_substringName[index], name, SUBSTRING_NAME_LEN);
+      *number = index;
+      status = true;
+    }
+    else
+    {
+      status = false;
+    }
+  }
+
+  return status;
+}
+
+static bool getSubstring(char *name, byte *number)
+{
+  bool status;
+  byte index;
+
+  if ((name==NULL) || (number==NULL)) return false;
+
+  status = false;
+  for (index=0; index < MAX_SUBSTRINGS; index++)
+  {
+    if (strncmp(name, S_substringName[index], SUBSTRING_NAME_LEN)==0)
+    {
+      *number = index;
+      status = true;
+      break;
+    }
+  }
+
+  return status;
+}
+
+static bool removeSubstring(char *name)
+{
+  bool status;
+  byte index;
+  
+  if (name==NULL) return false;
+
+  if (getSubstring(name, &index)==true)
+  {
+    S_substringName[index][0] = '\0';
+    status = true;
+  }
+  else
+  {
+    status = false;
+  }
+
+  return status;
+}
+
+void showSubstrings()
+{
+  byte index;
+  byte charPos;
+
+  Serial.println(F("Substrings:"));
+  for (index=0; index < MAX_SUBSTRINGS; index++)
+  {
+    if (S_substringName[index][0] != '\0')
+    {
+      Serial.print(index);
+      Serial.print(F(". "));
+      for (charPos=0; charPos < SUBSTRING_NAME_LEN; charPos++)
+      {
+        Serial.print(S_substringName[index][charPos]);
+      }
+      Serial.println();
+    }
+  }
 }
 
 /*---------------------------------------------------------------------------*/

@@ -44,6 +44,7 @@ TOFIX:
 
 void tonePlayNote(byte note, unsigned long duration);
 
+
 /*---------------------------------------------------------------------------*/
 // DEFINES / ENUMS
 /*---------------------------------------------------------------------------*/
@@ -60,14 +61,16 @@ void tonePlayNote(byte note, unsigned long duration);
 #else
 #define MAX_TRACKS  3
 #endif
-#define BUFFER_SIZE 300 // 255 max
+#define BUFFER_SIZE 400
+
+#define MAX_SUBSTRINGS      16  // 0-15
 
 /*---------------------------------------------------------------------------*/
 // STATIC GLOBALS
 /*---------------------------------------------------------------------------*/
 
 static unsigned long  S_playNextTime[MAX_TRACKS];
-static bool           S_trackPlaying[MAX_TRACKS]; // playing or not?
+static byte           S_trackStatus[MAX_TRACKS]; // playing or not?
 static byte           S_tracksPlaying = 0;
 static byte           S_sequencesToPlay = 0;
 
@@ -78,6 +81,12 @@ static unsigned int   S_ready[MAX_TRACKS] = {0};
 static unsigned int   S_repeatStart[MAX_TRACKS] = {0};
 static byte           S_repeatCount[MAX_TRACKS] = {0};
 
+// TODO:
+//static unsigned int   S_interruptStart[MAX_TRACKS] = {0};
+//static unsigned int   S_interruptNextOut[MAX_TRACKS] = {0};
+
+// TODO: Sub-string support
+//static unsigned int   S_substringStart[MAX_SUBSTRINGS];
 
 /*---------------------------------------------------------------------------*/
 // FUNCTIONS
@@ -105,7 +114,7 @@ bool sequencerStart()
     {
       // Mark end of previous sequence.
       sequencerPutByte(track, CMD_END_SEQUENCE);
-      
+            
       if (S_sequencesToPlay == 0)
       {
         SEQUENCER_PRINT(F("T"));
@@ -113,7 +122,8 @@ bool sequencerStart()
         SEQUENCER_PRINTLN(F(" Start new sequence."));
         
         S_playNextTime[track] = 0;
-        S_trackPlaying[track] = true;
+        S_trackStatus[track] = TRACK_PLAYING;
+        sequencerShowTrackStatus(track);
         S_repeatCount[track] = 0;
         S_repeatStart[track] = 0; // Not needed.
         // TODO: fix this, somewhere else.
@@ -146,7 +156,8 @@ bool sequencerStop()
 
   for (track = 0; track < MAX_TRACKS; track++)
   {
-    S_trackPlaying[track] = false;
+    S_trackStatus[track] = TRACK_IDLE;
+    sequencerShowTrackStatus(track);
     S_nextIn[track] = 0;
     S_nextOut[track] = 0;
     S_ready[track] = 0;
@@ -173,6 +184,7 @@ bool sequencerIsReady()
 }
 
 /*---------------------------------------------------------------------------*/
+
 /*
  * Return the largest amount of buffer available. Eventually, we'll use one
  * global buffer and this will be better.
@@ -195,6 +207,8 @@ unsigned int sequencerBufferAvailable()
   return largestBufferAvailable;
 }
 
+/*---------------------------------------------------------------------------*/
+// BUFFER FUNCTIONS
 /*---------------------------------------------------------------------------*/
 
 static bool sequencerPutByte(byte track, byte value)
@@ -223,6 +237,8 @@ static bool sequencerPutByte(byte track, byte value)
   return status;
 }
 
+/*---------------------------------------------------------------------------*/
+
 /*
  * Add something to sequencer buffer.
  * 
@@ -237,9 +253,9 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
   {
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
-    SEQUENCER_PRINT(F(" "));
+    SEQUENCER_PRINT(F(" put("));
     SEQUENCER_PRINT(S_nextIn[track]);
-    SEQUENCER_PRINT(F(" put: "));
+    SEQUENCER_PRINT(F(") - "));
     SEQUENCER_PRINT(note);
     SEQUENCER_PRINT(F(", "));
     SEQUENCER_PRINT(noteLength);
@@ -289,12 +305,19 @@ fix_this_later: // HAHA! A GOTO IN C!
   {
     *value = S_sequence[track][S_nextOut[track]];
 
+    SEQUENCER_PRINT(F("T"));
+    SEQUENCER_PRINT(track);
+    SEQUENCER_PRINT(F(" get("));
+    SEQUENCER_PRINT(S_nextOut[track]);
+    SEQUENCER_PRINT(F(") = "));
+    sequencerShowByte(*value);
+
     S_nextOut[track]++;
     if (S_nextOut[track] >= BUFFER_SIZE)
     {
       S_nextOut[track] = 0;
     }
-    
+
     // Was it a command byte?
     if (*value & CMD_BIT)
     {
@@ -302,7 +325,7 @@ fix_this_later: // HAHA! A GOTO IN C!
       byte cmdValue;
 
       cmd = (*value & CMD_MASK);
-
+      
       // Look for end of repeat.
       if ((cmd==CMD_REPEAT) || (cmd==CMD_END_SEQUENCE))
       {
@@ -333,6 +356,7 @@ fix_this_later: // HAHA! A GOTO IN C!
         // TODO: escape
         goto fix_this_later;
       }
+      
     } // CMD_BIT
 
     // If currently repeating...
@@ -351,6 +375,8 @@ fix_this_later: // HAHA! A GOTO IN C!
   return status;
 } // end of sequencerGetByte()
 
+/*---------------------------------------------------------------------------*/
+// SEQUENCER FUNCTIONS
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -380,7 +406,8 @@ bool sequencerHandler()
   for (track = 0; track < MAX_TRACKS; track++)
   {
     // Skip if already done.
-    if (S_trackPlaying[track] == false)
+    if ((S_trackStatus[track] == TRACK_IDLE) || 
+        (S_trackStatus[track] == TRACK_COMPLETE))
     {
       continue;
     }
@@ -393,7 +420,6 @@ bool sequencerHandler()
     //if ( (long)(millis()-S_playNextTime[i] >=0 ) )
     if ( (long)(timeNow > S_playNextTime[track]) )
     {
-      //if (sequencerGet(track, &note, &noteLength) == false)
       if (sequencerGetByte(track, &value) == true)
       {
         if (value & CMD_BIT) // Is it a command byte?
@@ -411,7 +437,9 @@ bool sequencerHandler()
             SEQUENCER_PRINT(track);
             SEQUENCER_PRINTLN(F(" Out of data."));
 
-            S_trackPlaying[track] = false;
+            S_trackStatus[track] = TRACK_COMPLETE;
+            sequencerShowTrackStatus(track);
+
             S_tracksPlaying--; // One less track is playing.
             if (S_tracksPlaying == 0)
             {
@@ -429,7 +457,8 @@ bool sequencerHandler()
                 for (i=0; i < MAX_TRACKS; i++)
                 {
                   S_playNextTime[i] = timeNow;
-                  S_trackPlaying[i] = true;
+                  S_trackStatus[i] = TRACK_PLAYING;
+                  sequencerShowTrackStatus(track);
                 }
                 S_tracksPlaying = MAX_TRACKS;
               }
@@ -466,17 +495,18 @@ bool sequencerHandler()
               noteLength = 256;
             }
             
-            SEQUENCER_PRINT(S_playNextTime[track]);
-            SEQUENCER_PRINT(F(" T"));
-            SEQUENCER_PRINT(track, DEC);
+            SEQUENCER_PRINT(F("T"));
+            SEQUENCER_PRINT(track);
             SEQUENCER_PRINT(F(" "));
+            SEQUENCER_PRINT(S_playNextTime[track]);
+            SEQUENCER_PRINT(F(": "));
             SEQUENCER_PRINT(note);
             SEQUENCER_PRINT(F(", "));
-            SEQUENCER_PRINT(noteLength, DEC);
+            SEQUENCER_PRINT(noteLength);
             SEQUENCER_PRINT(F(" ("));
             unsigned long ms = (noteLength*1000L)/60L;
             SEQUENCER_PRINT(ms);
-            SEQUENCER_PRINT(F("ms) "));
+            SEQUENCER_PRINT(F("ms)"));
   
             if (note != REST) // Don't call with invalid note.
             {
@@ -488,9 +518,8 @@ bool sequencerHandler()
             }
             S_playNextTime[track] = S_playNextTime[track] + ms;
       
-            SEQUENCER_PRINT(F("(next: "));
-            SEQUENCER_PRINT(S_playNextTime[track]);
-            SEQUENCER_PRINTLN(F(") "));
+            SEQUENCER_PRINT(F(" next:"));
+            SEQUENCER_PRINTLN(S_playNextTime[track]);
           }
         } // note
       }
@@ -504,6 +533,84 @@ bool sequencerHandler()
   return (S_tracksPlaying==0 ? false : true);
   
 } // end of sequencerHandler()
+
+/*---------------------------------------------------------------------------*/
+// DEBUG FUNCTIONS
+/*---------------------------------------------------------------------------*/
+
+static void sequencerShowByte(byte value)
+{
+  SEQUENCER_PRINT(value);
+  SEQUENCER_PRINT(F(" "));
+  
+  if (value & CMD_BIT)
+  {
+    switch (value & CMD_MASK)
+    {
+      case CMD_VOLUME:
+        SEQUENCER_PRINT(F("CMD_VOLUME | "));
+        break;
+      case CMD_REPEAT:
+        SEQUENCER_PRINT(F("CMD_REPEAT | "));
+        break;
+      case CMD_INTERRUPT:
+        SEQUENCER_PRINT(F("CMD_INTERRUPT | "));
+        break;
+      case CMD_ADD_SUBSTRING:
+        SEQUENCER_PRINT(F("CMD_ADD_SUBSTRING | "));
+        break;
+      case CMD_DEL_SUBSTRING:
+        SEQUENCER_PRINT(F("CMD_DEL_SUBSTRING | "));
+        break;
+      case CMD_PLAY_SUBSTRING:
+        SEQUENCER_PRINT(F("CMD_PLAY_SUBSTRING | "));
+        break;
+      case CMD_6:
+        SEQUENCER_PRINT(F("CMD_6 | "));
+        break;
+      case CMD_END_SEQUENCE:
+        SEQUENCER_PRINT(F("CMD_END_SEQUENCE | "));
+        break;
+      default:
+        SEQUENCER_PRINT(F("CMD_unknown"));
+        break;
+    }
+    SEQUENCER_PRINT(value & CMD_VALUE_MASK);    
+  }
+  
+  SEQUENCER_PRINTLN();
+}
+
+/*---------------------------------------------------------------------------*/
+
+static void sequencerShowTrackStatus(byte track)
+{
+  SEQUENCER_PRINT(F("T"));
+  SEQUENCER_PRINT(track);
+  SEQUENCER_PRINT(F(" "));
+  switch (S_trackStatus[track])
+  {
+    case TRACK_IDLE:
+      SEQUENCER_PRINTLN(F("TRACK_IDLE"));
+      break;
+
+    case TRACK_PLAYING:
+      SEQUENCER_PRINTLN(F("TRACK_PLAYING"));
+      break;    
+
+    case TRACK_COMPLETE:
+      SEQUENCER_PRINTLN(F("TRACK_COMPLETE"));
+      break;    
+
+    case TRACK_INTERRUPTED:
+      SEQUENCER_PRINTLN(F("TRACK_INTERRUPTED"));
+      break;    
+
+    default:
+      SEQUENCER_PRINTLN(F("TRACK_???"));
+      break;    
+  }
+}
 
 /*---------------------------------------------------------------------------*/
 // End of Sequencer.ino
