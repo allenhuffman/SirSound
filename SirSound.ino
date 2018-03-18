@@ -59,7 +59,7 @@ void setup()
   // Hardware serial port. Maybe.
   //CoCoSerial.begin(BAUD_COCO);
   //CoCoSerial.println(F("SirSound " SIRSOUND_VERSION" (" __DATE__ " " __TIME__ ")"));
-
+  
 #if !defined(SIRSOUNDJR)
   initSN76489();
 #endif
@@ -109,6 +109,8 @@ void setup()
   setVolumeAll(0); // 0=high, 15=silent
   muteAll(); // Just in case...
 #endif
+  // TODO: Need a PlayParserInit() routine of some kind.
+  clearSubstrings();
 
   play(F("T8P4O2L4EEP4EP4CEP4GZ"));
 
@@ -278,6 +280,8 @@ void setup()
 Frogger (2-voice):
 T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+ ,
 T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+
+
+^O4L32CGO+GO-
 
 Donkey Kong:
 T3O1L8CP4L8EP8L8GAG

@@ -1,4 +1,4 @@
-//#define DEBUG_PLAYPARSER
+#define DEBUG_PLAYPARSER
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -190,6 +190,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
   unsigned int    noteDuration; // 0-256
   unsigned int    dotDuration;  // 0-256
   byte    currentTrack;
+  char    substringName[SUBSTRING_NAME_LEN];
 
   if (commandPtr == 0) return;
 
@@ -236,22 +237,28 @@ void playWorker(unsigned int commandPtr, byte stringType)
       // 9A52
       // CHECK FOR AN EXECUTABLE SUBSTRING
       case 'X':
-        // X - sub-string (x$; or xx$;)
-        PLAYPARSER_PRINT(F(" (X")); // not supported
-        // process substring
-        // Skip until semicolon or end of string.
-        do
+        PLAYPARSER_PRINT(F(" X")); // not supported
+        // L9C0A
+        // L9C1B
+        // Get 1-2 characters, up to $;
+        value = checkForVariableName(&commandPtr, stringType, substringName);
+        if (value != 0)
         {
-          commandChar = getNextCommand(&commandPtr, stringType);
-          
-          if (commandChar == '\0') break;
-  
-          PLAYPARSER_PRINT(commandChar);
-          
-        } while( commandChar != ';' );
-
-        PLAYPARSER_PRINT(F(")")); // not supported
-        
+          // Translate to number 0-X
+          if (getSubstring(substringName, &value)==true)
+          {
+            value = (value & 0x00001111);
+            PLAYPARSER_PRINT(F(" substring "));
+            PLAYPARSER_PRINTLN(value);
+            showSubstrings();
+            sequencerPutByte(currentTrack, (CMD_PLAY_SUBSTRING | value));
+            value = 1; // No error.
+          }
+          else
+          {
+            value = 0; // ?FC ERROR
+          }
+        }
         break;
 
       // CHECK FOR OTHER COMMANDS
@@ -473,17 +480,48 @@ void playWorker(unsigned int commandPtr, byte stringType)
       case '+': // + - Add substring
         PLAYPARSER_PRINT(F(" + [Add]"));
         // Get 1-2 characters, up to $;
-        // Translate to number 0-X
-        // sequencerPutByte(currentTrack, (CMD_ADD_SUBSTRING | value));
+        value = checkForVariableName(&commandPtr, stringType, substringName);
+        if (value != 0)
+        {
+          // Translate to number 0-X
+          if (addSubstring(substringName, &value)==true)
+          {
+            value = (value & 0x00001111);
+            PLAYPARSER_PRINT(F(" substring "));
+            PLAYPARSER_PRINTLN(value);
+            showSubstrings();
+            sequencerPutByte(currentTrack, (CMD_ADD_SUBSTRING | value));
+            value = 1; // No error.
+          }
+          else
+          {
+            value = 0; // ?FC ERROR
+          }
+        }
         break;
 
       case '-': // + - Delete substring
         PLAYPARSER_PRINT(F(" - [Delete]"));
         // Get 1-2 characters, up to $;
-        // Translate to number 0-X
-        // sequencerPutByte(currentTrack, (CMD_DEL_SUBSTRING | value));
+        value = checkForVariableName(&commandPtr, stringType, substringName);
+        if (value != 0)
+        {
+          // Translate to number 0-X
+          if (removeSubstring(substringName, &value)==true)
+          {
+            value = (value & 0x00001111);
+            PLAYPARSER_PRINT(F(" substring "));
+            PLAYPARSER_PRINTLN(value);
+            showSubstrings();
+            sequencerPutByte(currentTrack, (CMD_DEL_SUBSTRING | value));
+            value = 1; // No error.
+          }
+          else
+          {
+            value = 0; // ?FC ERROR
+          }
+        }
         break;
-
 #endif // USE_SEQUENCER
 
       /*-----------------------------------------------------*/
@@ -864,6 +902,51 @@ byte checkForVariableOrNumeric(unsigned int *ptr, byte stringType, char commandC
 }
 
 /*---------------------------------------------------------------------------*/
+// INTERPRET THE PRESENT COMMAND STRING AS IF IT WERE A BASIC VARIABLE
+// L9C1B
+byte checkForVariableName(unsigned int *ptr, byte stringType, char *variableNamePtr)
+{
+  byte value;
+  byte commandChar;
+
+  value = 0; // ?FC ERROR
+  if ((ptr != 0) && (variableNamePtr != NULL))
+  {
+    commandChar = getNextCommand(ptr, stringType);
+
+    if ((commandChar >= 'A') && (commandChar <= 'Z'))
+    {
+      variableNamePtr[0] = commandChar;
+      PLAYPARSER_PRINT((char)commandChar);
+      
+      commandChar = getNextCommand(ptr, stringType);
+
+      if ( ((commandChar >= 'A') && (commandChar <= 'Z')) ||
+           ((commandChar >= '0') && (commandChar <= '9')) )
+      {
+        variableNamePtr[1] = commandChar;
+        PLAYPARSER_PRINT((char)commandChar);
+
+        // Here we should look for $, then ;, with only alpha/numeric.
+        // TODO: Only when doing the X do we care about the ;
+        // +XX$;CDEFGAB --- does that make sense?
+        do
+        {
+          commandChar = getNextCommand(ptr, stringType);
+          if (commandChar == ';')
+          {
+            value = 1;
+            break;
+          }
+        } while(commandChar != '\0');
+      } // end of A-Z, 0-9
+    } // end of A-Z
+  }
+
+  return value;
+}
+
+/*---------------------------------------------------------------------------*/
 // SUBSTRINGS
 /*---------------------------------------------------------------------------*/
 
@@ -936,16 +1019,15 @@ static bool getSubstring(char *name, byte *number)
   return status;
 }
 
-static bool removeSubstring(char *name)
+static bool removeSubstring(char *name, byte *number)
 {
   bool status;
-  byte index;
   
-  if (name==NULL) return false;
+  if ((name==NULL) || (number==NULL)) return false;
 
-  if (getSubstring(name, &index)==true)
+  if (getSubstring(name, number)==true)
   {
-    S_substringName[index][0] = '\0';
+    S_substringName[*number][0] = '\0';
     status = true;
   }
   else
