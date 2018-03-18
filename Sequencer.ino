@@ -202,8 +202,8 @@ bool sequencerStop()
   {
     S_trackStatus[track] = TRACK_IDLE;
     sequencerShowTrackStatus(track);
-    S_nextIn[track] = 0;
-    S_nextOut[track] = 0;
+    S_nextIn[track] = S_bufferStart[track];
+    S_nextOut[track] = S_bufferStart[track];
     S_ready[track] = 0;
     S_repeatCount[track] = 0;
   }
@@ -379,7 +379,8 @@ fix_this_later: // HAHA! A GOTO IN C!
     SEQUENCER_PRINT(F(" get("));
     SEQUENCER_PRINT(S_nextOut[track]);
     SEQUENCER_PRINT(F(") = "));
-    sequencerShowByte(*value);
+    SEQUENCER_PRINTLN(*value);
+    //sequencerShowByte(*value);
 
     S_nextOut[track]++;
     if (S_nextOut[track] > S_bufferEnd[track])
@@ -573,7 +574,9 @@ bool sequencerHandler()
             SEQUENCER_PRINT(F(", "));
             SEQUENCER_PRINT(noteLength);
             SEQUENCER_PRINT(F(" ("));
-            unsigned long ms = (noteLength*1000L)/60L;
+            //unsigned long ms = (noteLength*1000L)/60L;
+            // 1024 works better for the math and prevents drift.
+            unsigned long ms = (noteLength*1024L)/60L;
             SEQUENCER_PRINT(ms);
             SEQUENCER_PRINT(F("ms)"));
   
