@@ -502,6 +502,24 @@ void playWorker(unsigned int commandPtr, byte stringType)
 
       case '-': // + - Delete substring
         PLAYPARSER_PRINT(F(" - [Delete]"));
+        // * means delete all
+        commandChar = getNextCommand(&commandPtr, stringType);
+        
+        // Done if there is no more.
+        if (commandChar == '*')
+        {
+          clearSubstrings();
+          PLAYPARSER_PRINTLN(F(" all substrings"));
+          showSubstrings();
+          value = 1; // no error
+          break;
+        }
+        else
+        {
+          // Not a *. Put it back.
+          commandPtr--;
+        }
+        
         // Get 1-2 characters, up to $;
         value = checkForVariableName(&commandPtr, stringType, substringName);
         if (value != 0)
