@@ -23,6 +23,7 @@ VERSION HISTORY:
 2018-03-13 0.5 allenh - Adding STOP.
 2018-03-14 0.6 allenh - Adding REPEAT.
 2018-03-16 0.7 allenh - Adding VOLUME command for sound chip.
+2018-03-17 0.8 allenh - Rewrite buffer system to support substrings.
 
 TODO:
 * Use one large buffer, with the restriction that sequences have to be
@@ -61,7 +62,7 @@ void tonePlayNote(byte note, unsigned long duration);
 #else
 #define MAX_TRACKS  3
 #endif
-#define BUFFER_SIZE 400
+#define BUFFER_SIZE 900
 
 #define MAX_SUBSTRINGS      16  // 0-15
 
@@ -74,12 +75,15 @@ static byte           S_trackStatus[MAX_TRACKS]; // playing or not?
 static byte           S_tracksPlaying = 0;
 static byte           S_sequencesToPlay = 0;
 
-static byte           S_sequence[MAX_TRACKS][BUFFER_SIZE];
-static unsigned int   S_nextIn[MAX_TRACKS] = {0};
-static unsigned int   S_nextOut[MAX_TRACKS] = {0};
-static unsigned int   S_ready[MAX_TRACKS] = {0};
-static unsigned int   S_repeatStart[MAX_TRACKS] = {0};
-static byte           S_repeatCount[MAX_TRACKS] = {0};
+static byte           S_buffer[BUFFER_SIZE];
+static unsigned int   S_bufferStart[MAX_TRACKS];
+static unsigned int   S_bufferEnd[MAX_TRACKS];
+
+static unsigned int   S_nextIn[MAX_TRACKS];
+static unsigned int   S_nextOut[MAX_TRACKS];
+static unsigned int   S_ready[MAX_TRACKS];
+static unsigned int   S_repeatStart[MAX_TRACKS];
+static byte           S_repeatCount[MAX_TRACKS];
 
 // TODO:
 //static unsigned int   S_interruptStart[MAX_TRACKS] = {0};
@@ -90,6 +94,46 @@ static byte           S_repeatCount[MAX_TRACKS] = {0};
 
 /*---------------------------------------------------------------------------*/
 // FUNCTIONS
+/*---------------------------------------------------------------------------*/
+
+bool sequencerInit()
+{
+  byte          track;
+  unsigned int  trackBufferSize;
+  unsigned int  bufferStart;
+
+  SEQUENCER_PRINT(F("Sequencer Buffer Size: "));
+  SEQUENCER_PRINTLN(BUFFER_SIZE);
+
+  trackBufferSize = (BUFFER_SIZE / MAX_TRACKS);
+
+  bufferStart = 0;
+  for (track=0; track < MAX_TRACKS; track++)
+  {
+    S_bufferStart[track] = bufferStart;
+    S_bufferEnd[track] = (bufferStart + trackBufferSize - 1);
+
+    SEQUENCER_PRINT(F("T"));
+    SEQUENCER_PRINT(track);
+    SEQUENCER_PRINT(F(" "));
+    SEQUENCER_PRINT(S_bufferStart[track]);
+    SEQUENCER_PRINT(F(" - "));
+    SEQUENCER_PRINTLN(S_bufferEnd[track]);
+
+    bufferStart = S_bufferEnd[track]+1;
+
+    S_nextIn[track] = S_bufferStart[track];
+    S_nextOut[track] = S_bufferStart[track];
+    S_ready[track] = 0;
+    S_repeatStart[track] = 0; // TBA
+    S_repeatCount[track] = 0; // TBA    
+  }
+  // TODO: Make last track extend to use any leftover bytes.
+  S_bufferEnd[MAX_TRACKS-1] = (BUFFER_SIZE - 1);
+
+  return true;
+} // end of seqencerInit()
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -180,10 +224,26 @@ bool sequencerIsPlaying()
 
 bool sequencerIsReady()
 {
-  return (sequencerBufferAvailable() > (BUFFER_SIZE/2));
+  return (sequencerBufferAvailable() > (BUFFER_SIZE/MAX_TRACKS/2));
 }
 
 /*---------------------------------------------------------------------------*/
+
+unsigned int sequencerTrackBufferAvailable(byte track)
+{
+  unsigned int bufferAvailable;
+  
+  if (track < MAX_TRACKS)
+  {
+    bufferAvailable = (S_bufferEnd[track] - S_bufferStart[track]) + 1 - S_ready[track];
+  }
+  else
+  {
+    bufferAvailable = 0; // Bad!
+  }
+
+  return bufferAvailable;
+}
 
 /*
  * Return the largest amount of buffer available. Eventually, we'll use one
@@ -192,18 +252,21 @@ bool sequencerIsReady()
 unsigned int sequencerBufferAvailable()
 {
   unsigned int track;
-  byte largestBufferAvailable;
+  unsigned int largestBufferAvailable;
+  unsigned int bufferAvailable;
 
   sequencerHandler();
 
   largestBufferAvailable = 0;
   for (track = 0; track < MAX_TRACKS; track++)
   {
-    if ((BUFFER_SIZE - S_ready[track]) > largestBufferAvailable)
+    bufferAvailable = sequencerTrackBufferAvailable(track);
+    if (bufferAvailable > largestBufferAvailable)
     {
-      largestBufferAvailable = (BUFFER_SIZE - S_ready[track]);
+      bufferAvailable = sequencerTrackBufferAvailable(track);
     }
   }
+
   return largestBufferAvailable;
 }
 
@@ -215,14 +278,18 @@ static bool sequencerPutByte(byte track, byte value)
 {
   bool status;
 
-  if ((track < MAX_TRACKS) && (S_ready[track] < BUFFER_SIZE))
+  if ((track < MAX_TRACKS) && (sequencerTrackBufferAvailable(track) > 1))
   {
-    S_sequence[track][S_nextIn[track]] = value;
+    S_buffer[S_nextIn[track]] = value;
     
     S_nextIn[track]++;
-    if (S_nextIn[track] >= BUFFER_SIZE)
+    if (S_nextIn[track] > S_bufferEnd[track])
     {
-      S_nextIn[track] = 0;
+      S_nextIn[track] = S_bufferStart[track];
+      SEQUENCER_PRINT(F("T"));
+      SEQUENCER_PRINT(track);
+      SEQUENCER_PRINT(F(": wrap to "));
+      SEQUENCER_PRINTLN(S_nextIn[track]);
     }
 
     S_ready[track]++;
@@ -249,21 +316,18 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
 {
   bool status;
 
-  if ((track < MAX_TRACKS) && (BUFFER_SIZE - S_ready[track] > 2))
+  if ((track < MAX_TRACKS) && (sequencerTrackBufferAvailable(track) > 2))
   {
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
     SEQUENCER_PRINT(F(" put("));
     SEQUENCER_PRINT(S_nextIn[track]);
     SEQUENCER_PRINT(F(") - "));
-    SEQUENCER_PRINT(note);
-    SEQUENCER_PRINT(F(", "));
-    SEQUENCER_PRINT(noteLength);
-    SEQUENCER_PRINT(F(" -> "));
 
     status = sequencerPutByte(track, note);
     if (status == true)
     {
+      SEQUENCER_PRINT(note);
       // To make the timing math work, it uses 256. But we only store it as
       // a byte (0-255). Since 0 is an invalid time, we treat this as base-0
       // and add one.    
@@ -276,6 +340,10 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
       status = sequencerPutByte(track, noteLength);
       if (status == true)
       {
+        SEQUENCER_PRINT(F(", "));
+        SEQUENCER_PRINT(noteLength);
+        SEQUENCER_PRINT(F(" -> "));
+
         SEQUENCER_PRINT(F("rdy:"));
         SEQUENCER_PRINT(S_ready[track]);
         SEQUENCER_PRINTLN(F(" "));
@@ -284,8 +352,9 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
   }
   else
   {
-    SEQUENCER_PRINT(F("Invalid track put: "));
-    SEQUENCER_PRINTLN(track);
+    SEQUENCER_PRINT(F("T"));
+    SEQUENCER_PRINT(track);
+    SEQUENCER_PRINTLN(F(": Can't put."));
 
     status = false;
   }
@@ -303,7 +372,7 @@ fix_this_later: // HAHA! A GOTO IN C!
 
   if ((track < MAX_TRACKS) && (S_ready[track] != 0))
   {
-    *value = S_sequence[track][S_nextOut[track]];
+    *value = S_buffer[S_nextOut[track]];
 
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
@@ -313,9 +382,9 @@ fix_this_later: // HAHA! A GOTO IN C!
     sequencerShowByte(*value);
 
     S_nextOut[track]++;
-    if (S_nextOut[track] >= BUFFER_SIZE)
+    if (S_nextOut[track] > S_bufferEnd[track])
     {
-      S_nextOut[track] = 0;
+      S_nextOut[track] = S_bufferStart[track];
     }
 
     // Was it a command byte?

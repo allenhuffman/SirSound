@@ -110,6 +110,7 @@ void setup()
   muteAll(); // Just in case...
 #endif
   // TODO: Need a PlayParserInit() routine of some kind.
+  sequencerInit();
   clearSubstrings();
 
   play(F("T8P4O2L4EEP4EP4CEP4GZ"));

@@ -1,4 +1,4 @@
-#define DEBUG_PLAYPARSER
+//#define DEBUG_PLAYPARSER
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -17,6 +17,7 @@ Extended Color BASIC.
 2018-03-05 0.00 allenh - Fixed issue with dotted notes.
 2018-03-11 1.00 allenh - Merging standalone player with SirSound player.
 2018-03-14 1.00 allenh - Adding support for REPEAT.
+2018-03-17 1.00 allenh - Adding SUBSTRING support.
 
 TODO:
 * DONE: Data needs to be moved to PROGMEM.
