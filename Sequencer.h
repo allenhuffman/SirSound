@@ -141,7 +141,7 @@ bool sequencerStop();
 bool sequencerInterrupt();
 bool sequencerIsPlaying();
 bool sequencerIsReady();
-bool sequencerPut(byte track, byte value);
+bool sequencerPutByte(byte track, byte value);
 bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
 bool sequencerGet(byte track, byte *value);
 bool sequencerHandler();
