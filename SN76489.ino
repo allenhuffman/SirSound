@@ -133,7 +133,7 @@ TOFIX:
   AUD   goes to a headphone jack (other side to GND?).
   CLK   goes to a 4MHz crystal (which is hooked to 5V and GND).
   CE    goes to GND (always enabled; but it could be tied to a pin for using
-        more than one device on those liqnes).
+        more than one device on those lines).
   RDY   is not used in this code, yet.
 
   NOTE: The Arduino chips have a timer that is capable of generating the
