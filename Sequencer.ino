@@ -62,7 +62,8 @@ void tonePlayNote(byte note, unsigned long duration);
 #else
 #define MAX_TRACKS  3
 #endif
-#define BUFFER_SIZE 900
+//#define BUFFER_SIZE 900
+#define BUFFER_SIZE 100
 
 #define MAX_SUBSTRINGS      16  // 0-15
 
@@ -133,6 +134,111 @@ bool sequencerInit()
 
   return true;
 } // end of seqencerInit()
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * To make room for substrings, the track buffers will need to have their
+ * sizes reduced. To allow this, we need a routine to compress the used
+ * data down and ajust all the pointers to it.
+ */
+
+bool sequencerOptimizeBuffer()
+{
+  byte          track;
+
+  SEQUENCER_PRINTLN(F("Optimizing Buffer."));
+
+  for (track=0; track < MAX_TRACKS; track++)
+  {
+    unsigned int  i;
+    unsigned int  buffersize;
+    int           shift;
+    unsigned int  pos;
+    int           newpos;
+    byte          temp, tomove;
+  
+    buffersize = (S_bufferEnd[track] - S_bufferStart[track])+1;
+    shift = (S_bufferStart[track] - S_nextOut[track]);
+    pos = S_nextOut[track];
+  
+    // Character to move is at pos.
+    tomove = S_buffer[pos];
+/*
+    SEQUENCER_PRINT(F("Track "));
+    SEQUENCER_PRINTLN(track);
+    Serial.print("size  = "); Serial.println(buffersize);
+    Serial.print("pos   = "); Serial.println(pos);
+    Serial.print("shift = "); Serial.println(shift);
+    Serial.print("in    = "); Serial.println(S_nextIn[track]);
+    Serial.print("out   = "); Serial.println(S_nextOut[track]);
+
+    for (i=S_bufferStart[track]; i<S_bufferEnd[track]; i++)
+    {
+      SEQUENCER_PRINT(S_buffer[i], DEC);
+      SEQUENCER_PRINT(F(" "));
+    }
+    SEQUENCER_PRINTLN();
+*/
+
+    for (i=0; i < buffersize; i++)
+    {
+      // Location to move it to is newpos.
+      newpos = sequencerAddShiftWithRollover(pos, shift,
+        S_bufferStart[track], S_bufferEnd[track]);
+      // Save what is there.
+      temp = S_buffer[newpos];
+      // Move character.
+      S_buffer[newpos] = tomove;
+      tomove = temp;
+      pos = newpos;
+    }
+    // Adjust positions.
+    S_nextIn[track] = sequencerAddShiftWithRollover(S_nextIn[track], shift,
+        S_bufferStart[track], S_bufferEnd[track]);
+    
+    S_nextOut[track] = sequencerAddShiftWithRollover(S_nextOut[track], shift,
+        S_bufferStart[track], S_bufferEnd[track]);
+
+    S_repeatStart[track] = sequencerAddShiftWithRollover(S_repeatStart[track], shift,
+        S_bufferStart[track], S_bufferEnd[track]);
+/*
+    Serial.print("in    = "); Serial.println(S_nextIn[track]);
+    Serial.print("out   = "); Serial.println(S_nextOut[track]);
+    for (i=S_bufferStart[track]; i<S_bufferEnd[track]; i++)
+    {
+      SEQUENCER_PRINT(S_buffer[i], DEC);
+      SEQUENCER_PRINT(F(" "));
+    }
+    SEQUENCER_PRINTLN();
+*/
+  } // end of for()
+
+  return true;
+} // end of seqencerInit()
+
+unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
+  unsigned int start, unsigned int end)
+{
+  unsigned int  bufferSize;
+  int           newPos;
+
+  bufferSize = (end - start)+1;
+  
+  newPos = (pos + shift);
+
+  // Handle rollover.
+  if (newPos < (int)start)
+  {
+    newPos = (newPos + bufferSize);
+  }
+  else if (newPos > (int)end)
+  {
+    newPos = (newPos - bufferSize);
+  }
+
+  return newPos;
+}
 
 /*---------------------------------------------------------------------------*/
 
@@ -263,7 +369,7 @@ unsigned int sequencerBufferAvailable()
     bufferAvailable = sequencerTrackBufferAvailable(track);
     if (bufferAvailable > largestBufferAvailable)
     {
-      bufferAvailable = sequencerTrackBufferAvailable(track);
+      largestBufferAvailable = bufferAvailable;
     }
   }
 
@@ -274,7 +380,7 @@ unsigned int sequencerBufferAvailable()
 // BUFFER FUNCTIONS
 /*---------------------------------------------------------------------------*/
 
-static bool sequencerPutByte(byte track, byte value)
+bool sequencerPutByte(byte track, byte value)
 {
   bool status;
 
@@ -682,6 +788,23 @@ static void sequencerShowTrackStatus(byte track)
       SEQUENCER_PRINTLN(F("TRACK_???"));
       break;    
   }
+}
+
+/*---------------------------------------------------------------------------*/
+void sequencerShowBufferInfo(byte track)
+{
+  Serial.print(F("T"));
+  Serial.print(track);
+  Serial.println(F(": Info"));
+
+  Serial.print(F("Size    : "));
+  Serial.println(S_bufferEnd[track] - S_bufferStart[track] + 1);
+
+  Serial.print(F("Next In : "));
+  Serial.println(S_nextIn[track]);
+
+  Serial.print(F("Next Out: "));
+  Serial.println(S_nextOut[track]);
 }
 
 /*---------------------------------------------------------------------------*/
