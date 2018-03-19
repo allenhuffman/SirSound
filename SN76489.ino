@@ -127,13 +127,13 @@ TOFIX:
    GND ->  8 +-----+ 9  <- NC
 
   D0-D7 goes to Arduino digital outputs.
-  WE    goes to Arduino digital output.
+  WE    goes to Arduino digital output. 
   VCC   goes to 5V.
   GND   goes to ground.
   AUD   goes to a headphone jack (other side to GND?).
   CLK   goes to a 4MHz crystal (which is hooked to 5V and GND).
   CE    goes to GND (always enabled; but it could be tied to a pin for using
-        more than one device on those lines).
+        more than one device on those liqnes).
   RDY   is not used in this code, yet.
 
   NOTE: The Arduino chips have a timer that is capable of generating the
