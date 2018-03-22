@@ -41,11 +41,22 @@ typedef struct {
 // DEFINES / ENUMS
 /*---------------------------------------------------------------------------*/
 
+#if defined(SIRSOUNDJR)
+#define MAX_TRACKS 1
+#else
+#define MAX_TRACKS  3
+#endif
+#define BUFFER_SIZE 900
+//#define BUFFER_SIZE 100
+
+#define MAX_SUBSTRINGS      16  // 0-15
+
 // These are set to the lowest and highest note the chip can play.
 //#define LOWEST_NOTE   NB2
 
 //#define HIGHEST_NOTE  NC8 // It is really NC9, beyond piano.
 
+#define NOTE_MASK           0b01111111 // 0-127 only for notes.
 #define CMD_BIT             0b10000000 // bit(7)
 #define CMD_MASK            0b11110000
 #define CMD_VALUE_MASK      0b00001111
@@ -136,6 +147,7 @@ enum flats {
 // EXTERNAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
 
+bool sequencerInit(unsigned int bufferSize, unsigned int substringSize);
 bool sequencerStart();
 bool sequencerStop();
 bool sequencerInterrupt();
@@ -143,7 +155,7 @@ bool sequencerIsPlaying();
 bool sequencerIsReady();
 bool sequencerPutByte(byte track, byte value);
 bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
-bool sequencerGet(byte track, byte *value);
+bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();

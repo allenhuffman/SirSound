@@ -1,4 +1,4 @@
-//#define DEBUG_PLAYPARSER
+#define DEBUG_PLAYPARSER
 /*---------------------------------------------------------------------------*/
 /* 
 Sub-Etha Software's PLAY Parser
@@ -78,6 +78,7 @@ VOLUME
 "V" followed by a number from 1-31. Default is 15. (Supports modifiers.)
 
 PAUSE
+-----
 "P" followed by a number from 1-255.
 
 SUBSTRINGS
@@ -434,6 +435,15 @@ void playWorker(unsigned int commandPtr, byte stringType)
         break;
 
 #if defined(USE_SEQUENCER)
+      case '&':
+        PLAYPARSER_PRINTLN(F(" + [OPTIMIZE]"));
+        sequencerOptimizeBuffer();
+        break;
+      case '%':
+        PLAYPARSER_PRINTLN(F(" + [BUFFER]"));
+        sequencerShowBufferInfo(currentTrack);
+        break;    
+
       case '*': // asterisk - stop!
         PLAYPARSER_PRINTLN(F(" * [Stop]"));
         sequencerStop();

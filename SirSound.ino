@@ -1,4 +1,4 @@
-//#define SIRSOUNDJR
+#define SIRSOUNDJR
 #define USE_SEQUENCER
 //#define USE_SOFTSERIAL
 /*---------------------------------------------------------------------------*/
@@ -31,7 +31,8 @@ TOFIX:
 #define SIRSOUND_VERSION "0.4"
 
 #if defined(USE_SOFTSERIAL)
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
+#include "ReceiveOnlySoftwareSerial.h"
 #endif
 #include "Sequencer.h"
 #include "SN76489.h"
@@ -40,11 +41,12 @@ TOFIX:
 #define RX_PIN_COCO     A5
 #define LED_PIN         13
 
-#define BAUD_COCO       1200
+#define BAUD_COCO       9600
 #define BAUD_CONSOLE    115200
 
 #if defined(USE_SOFTSERIAL)
-SoftwareSerial CoCoSerial(RX_PIN_COCO, TX_PIN_COCO); // RX, TX
+//SoftwareSerial CoCoSerial(RX_PIN_COCO, TX_PIN_COCO); // RX, TX
+ReceiveOnlySoftwareSerial CoCoSerial(RX_PIN_COCO); // RX, TX
 #else
 #define CoCoSerial Serial
 #endif
@@ -56,9 +58,10 @@ void setup()
   Serial.begin(BAUD_CONSOLE);
   Serial.println(F("SirSound " SIRSOUND_VERSION " (" __DATE__ " " __TIME__ ")"));
 
-  // Hardware serial port. Maybe.
-  //CoCoSerial.begin(BAUD_COCO);
+#if defined(USE_SOFTSERIAL)
+  CoCoSerial.begin(BAUD_COCO);
   //CoCoSerial.println(F("SirSound " SIRSOUND_VERSION" (" __DATE__ " " __TIME__ ")"));
+#endif
   
 #if !defined(SIRSOUNDJR)
   initSN76489();
@@ -66,51 +69,16 @@ void setup()
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-
-  // Notes about using an Arduino pin to generate the 4Mhz pulse:
-
-  // For the Teensy 2.0, this is how to make a pin act as a 4MHz pulse.
-  // I am using this on my Teensy 2.0 hardware for testing. This can be
-  // done on other Arduino models, too, but I have only been using my
-  // Teensy for this so far. My original NANO prototype is using an
-  // external crystal.
-
-  // For the Teensy 2.0, this
-  //pinMode(14, OUTPUT);
-  // Turn on toggle pin mode.
-  //TCCR1A |= ((1<<COM1A1));
-  // Set CTC mode (mode 4), and set clock to be CPU clock
-  //TCCR1B |= ((1<<WGM12) | (1<<CS10));
-  // Count to one and then reset and count again.  Since CPU is 16MHz,
-  // this will divide clock by 2 and action on the pin.  Since we will be
-  // toggling the pin, that will divide by 2 again, giving /4 or 4MHz
-  //OCR1A = 1;
-
-#if !defined(SIRSOUNDJR)
-#if defined(TEENSY20)
-  // Make pin 14 be a 4MHz signal.
-  pinMode(14, OUTPUT);
-  TCCR1A = 0x43;  // 01000011 
-  TCCR1B = 0x19;  // 00011001
-  OCR1A = 1;
-#elif defined(ARDUINO_AVR_NANO)
-  // Make pin 3 be a 4MHz signal.
-  pinMode(3, OUTPUT);
-  TCCR2A = 0x23;  // 00100011
-  TCCR2B = 0x09;  // 00001001
-  OCR2A = 3;
-  OCR2B = 1;  
-#else
-#error 4MHz stuff not defined.
-#endif
-#endif // !SIRSOUNDJR
+  pinMode(TX_PIN_COCO, OUTPUT);
+  digitalWrite(TX_PIN_COCO, LOW); // Ready!
 
 #if !defined(SIRSOUNDJR)
   setVolumeAll(0); // 0=high, 15=silent
   muteAll(); // Just in case...
 #endif
   // TODO: Need a PlayParserInit() routine of some kind.
-  sequencerInit();
+  sequencerInit(BUFFER_SIZE, 0);
+  sequencerInit(BUFFER_SIZE-64, 64);
   clearSubstrings();
 
   play(F("T8P4O2L4EEP4EP4CEP4GZ"));
@@ -334,20 +302,45 @@ void loop()
   int incomingByte;
   char buffer[255];
   byte pos = 0;
+  bool lastSequencerStatus;
+  bool sequencerStatus;
 
   digitalWrite(LED_PIN, HIGH);
+
+  lastSequencerStatus = sequencerIsReady();
+  Serial.print(F("Sequencer Status: "));
+  Serial.println(lastSequencerStatus);
 
   Serial.println(F("loop"));
   while(1)
   {
+    sequencerStatus = sequencerIsReady();
+    if (sequencerStatus != lastSequencerStatus)
+    {
+      Serial.print(F("Sequencer Status: "));
+      Serial.println(lastSequencerStatus);
+
+      if (sequencerStatus == true)
+      {
+        digitalWrite(TX_PIN_COCO, LOW);
+        digitalWrite(LED_PIN, HIGH);
+      }
+      else
+      {
+        digitalWrite(TX_PIN_COCO, HIGH);
+        digitalWrite(LED_PIN, LOW);
+      }
+      lastSequencerStatus = sequencerStatus;
+    }
+    
     // send data only when you receive data:
     if (CoCoSerial.available() > 0)
     {
-      digitalWrite(LED_PIN, LOW);
+      //digitalWrite(LED_PIN, LOW);
   
       // read the incoming byte:
       incomingByte = CoCoSerial.read();
-  
+
       if (incomingByte >= 0)
       {
         if (incomingByte == 13)
@@ -369,8 +362,6 @@ void loop()
             pos = 0;
           }
         }
-        //poke(incomingByte);
-        //Serial.print(incomingByte, HEX);
       }
     }
 

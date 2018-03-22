@@ -39,7 +39,7 @@ TOFIX:
 */
 /*---------------------------------------------------------------------------*/
 
-#define SEQUENCER_VERSION "0.7"
+#define SEQUENCER_VERSION "0.8"
 
 #include "Sequencer.h"
 
@@ -56,16 +56,6 @@ void tonePlayNote(byte note, unsigned long duration);
 #define SEQUENCER_PRINT(...)
 #define SEQUENCER_PRINTLN(...)
 #endif
-
-#if defined(SIRSOUNDJR)
-#define MAX_TRACKS 1
-#else
-#define MAX_TRACKS  3
-#endif
-//#define BUFFER_SIZE 900
-#define BUFFER_SIZE 100
-
-#define MAX_SUBSTRINGS      16  // 0-15
 
 /*---------------------------------------------------------------------------*/
 // STATIC GLOBALS
@@ -91,22 +81,25 @@ static byte           S_repeatCount[MAX_TRACKS];
 //static unsigned int   S_interruptNextOut[MAX_TRACKS] = {0};
 
 // TODO: Sub-string support
-//static unsigned int   S_substringStart[MAX_SUBSTRINGS];
+static unsigned int   S_substringStart[MAX_SUBSTRINGS];
 
 /*---------------------------------------------------------------------------*/
 // FUNCTIONS
 /*---------------------------------------------------------------------------*/
-
-bool sequencerInit()
+/*
+ * bufferSize - size to use for track sequencer
+ * substringSize - size to use for substrings
+ */
+bool sequencerInit(unsigned int bufferSize, unsigned int substringSize)
 {
   byte          track;
   unsigned int  trackBufferSize;
   unsigned int  bufferStart;
 
   SEQUENCER_PRINT(F("Sequencer Buffer Size: "));
-  SEQUENCER_PRINTLN(BUFFER_SIZE);
+  SEQUENCER_PRINTLN(bufferSize);
 
-  trackBufferSize = (BUFFER_SIZE / MAX_TRACKS);
+  trackBufferSize = (bufferSize / MAX_TRACKS);
 
   bufferStart = 0;
   for (track=0; track < MAX_TRACKS; track++)
@@ -130,7 +123,16 @@ bool sequencerInit()
     S_repeatCount[track] = 0; // TBA    
   }
   // TODO: Make last track extend to use any leftover bytes.
-  S_bufferEnd[MAX_TRACKS-1] = (BUFFER_SIZE - 1);
+  S_bufferEnd[MAX_TRACKS-1] = (bufferSize - 1);
+
+  // Substrings will start at (S_bufferEnd[MAX-TRACKS-1]) and end at
+  // (BUFFER_SIZE - 1). Yes?
+  SEQUENCER_PRINT(F("Substring Buffer Size: "));
+  SEQUENCER_PRINTLN(BUFFER_SIZE - S_bufferEnd[MAX_TRACKS-1] - 1);
+  SEQUENCER_PRINT(F("Substring Start: "));
+  SEQUENCER_PRINTLN(S_bufferEnd[MAX_TRACKS-1]+1);
+  SEQUENCER_PRINT(F("Substring End  : "));
+  SEQUENCER_PRINTLN(BUFFER_SIZE - 1);
 
   return true;
 } // end of seqencerInit()
@@ -283,7 +285,7 @@ bool sequencerStart()
 
     S_sequencesToPlay++;
 
-    SEQUENCER_PRINT(F("Sequences left: "));
+    SEQUENCER_PRINT(F("Sequences to play: "));
     SEQUENCER_PRINTLN(S_sequencesToPlay);
 
     status = true;
@@ -351,6 +353,8 @@ unsigned int sequencerTrackBufferAvailable(byte track)
   return bufferAvailable;
 }
 
+/*---------------------------------------------------------------------------*/
+
 /*
  * Return the largest amount of buffer available. Eventually, we'll use one
  * global buffer and this will be better.
@@ -398,6 +402,19 @@ bool sequencerPutByte(byte track, byte value)
       SEQUENCER_PRINTLN(S_nextIn[track]);
     }
 
+/*
+      else if (cmd==CMD_ADD_SUBSTRING)
+      {
+        cmdValue = (*value & CMD_VALUE_MASK);
+        
+      }
+      else if (cmd==CMD_DEL_SUBSTRING)
+      {
+        cmdValue = (*value & CMD_VALUE_MASK);
+        #error        
+      }
+
+ */
     S_ready[track]++;
 
     status = true;
@@ -470,7 +487,7 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
 
 /*---------------------------------------------------------------------------*/
 
-static bool sequencerGetByte(byte track, byte *value)
+bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck)
 {
   bool status;
 
@@ -485,9 +502,29 @@ fix_this_later: // HAHA! A GOTO IN C!
     SEQUENCER_PRINT(F(" get("));
     SEQUENCER_PRINT(S_nextOut[track]);
     SEQUENCER_PRINT(F(") = "));
-    SEQUENCER_PRINTLN(*value);
-    //sequencerShowByte(*value);
-
+    if (cmdByteCheck == true)
+    {
+      sequencerShowByte(*value);
+    }
+    else
+    {
+      SEQUENCER_PRINTLN(*value);
+    }
+    
+    /*
+    if (S_playingSubstring[track] == ?)
+    {
+      return next byte from substring
+      NEXT OUT for substring? Yeah, if we have to save
+        the normal nextout and restore it, we are still
+        using another variable, so might as well use it
+        for this.
+      if it is end of sequence,
+        S_playingSubstring[track] = 255;
+    }
+    else
+    */
+    // Normal playing
     S_nextOut[track]++;
     if (S_nextOut[track] > S_bufferEnd[track])
     {
@@ -495,12 +532,14 @@ fix_this_later: // HAHA! A GOTO IN C!
     }
 
     // Was it a command byte?
-    if (*value & CMD_BIT)
+    if ((cmdByteCheck == true) && (*value & CMD_BIT))
     {
       byte cmd;
       byte cmdValue;
 
       cmd = (*value & CMD_MASK);
+      // TODO: Why set this if not everyone needs it below?
+      //cmdValue = (*value & CMD_VALUE_MASK);
       
       // Look for end of repeat.
       if ((cmd==CMD_REPEAT) || (cmd==CMD_END_SEQUENCE))
@@ -516,6 +555,8 @@ fix_this_later: // HAHA! A GOTO IN C!
           goto fix_this_later;
         }
         // Not repeating. Drop through.
+
+        // if playing a substring, we would stop here.
       }
       
       // Intercept new repeat command.
@@ -531,6 +572,24 @@ fix_this_later: // HAHA! A GOTO IN C!
         S_ready[track]--;
         // TODO: escape
         goto fix_this_later;
+      }
+      else if (cmd==CMD_PLAY_SUBSTRING)
+      {
+        cmdValue = (*value & CMD_VALUE_MASK);
+        // Fake it, and start returning data from this substring
+        // instead of the normal position.
+        /*
+        if (sequencerGetSubstringStart(cmdValue)==true)
+        {
+          // Substring exists.
+          // S_playingSubstring[track] = cmdValue;
+          // TODO: make sure we can't play a substring from within a substring.
+          // TODO: Oh, well BASIC allows that, so... how?
+        }
+        S_ready[track]--;
+        // TODO: escape
+        goto fix_this_later;
+        */
       }
       
     } // CMD_BIT
@@ -596,15 +655,15 @@ bool sequencerHandler()
     //if ( (long)(millis()-S_playNextTime[i] >=0 ) )
     if ( (long)(timeNow > S_playNextTime[track]) )
     {
-      if (sequencerGetByte(track, &value) == true)
+      if (sequencerGetByte(track, &value, true) == true)
       {
         if (value & CMD_BIT) // Is it a command byte?
         {
           byte cmd;
-          byte cmdValue;
+          //byte cmdValue;
 
           cmd = (value & CMD_MASK);
-          cmdValue = (value & CMD_VALUE_MASK);
+          //cmdValue = (value & CMD_VALUE_MASK);
 
           if (cmd == CMD_END_SEQUENCE)
           {
@@ -663,7 +722,7 @@ bool sequencerHandler()
           note = value;
 
           // Get note length.
-          if (sequencerGetByte(track, &value) == true)
+          if (sequencerGetByte(track, &value, false) == true)
           {
             noteLength = value;
             if (noteLength == 0)
@@ -673,9 +732,9 @@ bool sequencerHandler()
             
             SEQUENCER_PRINT(F("T"));
             SEQUENCER_PRINT(track);
-            SEQUENCER_PRINT(F(" "));
+            SEQUENCER_PRINT(F(" ["));
             SEQUENCER_PRINT(S_playNextTime[track]);
-            SEQUENCER_PRINT(F(": "));
+            SEQUENCER_PRINT(F("] "));
             SEQUENCER_PRINT(note);
             SEQUENCER_PRINT(F(", "));
             SEQUENCER_PRINT(noteLength);
