@@ -360,6 +360,44 @@ void initSN76489()
 
   pinMode(SN76489_WE, OUTPUT);
 
+  // Notes about using an Arduino pin to generate the 4Mhz pulse:
+
+  // For the Teensy 2.0, this is how to make a pin act as a 4MHz pulse.
+  // I am using this on my Teensy 2.0 hardware for testing. This can be
+  // done on other Arduino models, too, but I have only been using my
+  // Teensy for this so far. My original NANO prototype is using an
+  // external crystal.
+
+  // For the Teensy 2.0, this
+  //pinMode(14, OUTPUT);
+  // Turn on toggle pin mode.
+  //TCCR1A |= ((1<<COM1A1));
+  // Set CTC mode (mode 4), and set clock to be CPU clock
+  //TCCR1B |= ((1<<WGM12) | (1<<CS10));
+  // Count to one and then reset and count again.  Since CPU is 16MHz,
+  // this will divide clock by 2 and action on the pin.  Since we will be
+  // toggling the pin, that will divide by 2 again, giving /4 or 4MHz
+  //OCR1A = 1;
+
+#if !defined(SIRSOUNDJR)
+#if defined(TEENSY20)
+  // Make pin 14 be a 4MHz signal.
+  pinMode(14, OUTPUT);
+  TCCR1A = 0x43;  // 01000011 
+  TCCR1B = 0x19;  // 00011001
+  OCR1A = 1;
+#elif defined(ARDUINO_AVR_NANO)
+  // Make pin 3 be a 4MHz signal.
+  pinMode(3, OUTPUT);
+  TCCR2A = 0x23;  // 00100011
+  TCCR2B = 0x09;  // 00001001
+  OCR2A = 3;
+  OCR2B = 1;  
+#else
+#error 4MHz stuff not defined.
+#endif
+#endif // !SIRSOUNDJR
+
   muteAll();
 }
 
