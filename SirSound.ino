@@ -81,7 +81,7 @@ void setup()
 #endif
   // TODO: Need a PlayParserInit() routine of some kind.
   sequencerInit(BUFFER_SIZE, 0);
-  sequencerInit(BUFFER_SIZE-64, 64);
+  //sequencerInit(BUFFER_SIZE-64, 64);
   clearSubstrings();
 
   play(F("T8P4O2L4EEP4EP4CEP4GZ"));

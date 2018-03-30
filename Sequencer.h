@@ -62,7 +62,7 @@ typedef struct
 #define MAX_TRACKS 3
 #endif
 
-#define BUFFER_SIZE 900
+#define BUFFER_SIZE 300
 
 #define MAX_SUBSTRINGS      16  // 0-15
 

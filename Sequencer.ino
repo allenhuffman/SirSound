@@ -262,10 +262,8 @@ bool sequencerStart()
     // Initialize
     for (track = 0; track < MAX_TRACKS; track++)
     {
-      // Mark end of previous sequence.
-      sequencerPutByte(track, CMD_END_SEQUENCE);
-            
-      if (S_sequencesToPlay == 0)
+      //if (S_sequencesToPlay == 0)
+      if (S_trackBuf[track].ready > 0)
       {
         SEQUENCER_PRINT(F("T"));
         SEQUENCER_PRINT(track);
@@ -523,7 +521,12 @@ fix_this_later: // HAHA! A GOTO IN C!
     SEQUENCER_PRINT(track);
     SEQUENCER_PRINT(F(" get("));
     SEQUENCER_PRINT(S_trackBuf[track].nextOut);
-    SEQUENCER_PRINT(F(") = "));
+    SEQUENCER_PRINT(F(") "));
+
+    SEQUENCER_PRINT(F("rdy:"));
+    SEQUENCER_PRINT(S_trackBuf[track].ready);
+    SEQUENCER_PRINT(F(" = "));
+
     if (cmdByteCheck == true)
     {
       sequencerShowByte(*value);
@@ -532,7 +535,7 @@ fix_this_later: // HAHA! A GOTO IN C!
     {
       SEQUENCER_PRINTLN(*value);
     }
-    
+
     /*
     if (S_playingSubstring[track] == ?)
     {
@@ -879,16 +882,19 @@ void sequencerShowBufferInfo(byte track)
 {
   Serial.print(F("T"));
   Serial.print(track);
-  Serial.println(F(": Info"));
+  Serial.print(F(" Info - "));
 
-  Serial.print(F("Size    : "));
-  Serial.println(S_trackBuf[track].end - S_trackBuf[track].start + 1);
+  Serial.print(F("Size: "));
+  Serial.print(S_trackBuf[track].end - S_trackBuf[track].start + 1);
 
-  Serial.print(F("Next In : "));
-  Serial.println(S_trackBuf[track].nextIn);
+  Serial.print(F(" - Next In : "));
+  Serial.print(S_trackBuf[track].nextIn);
 
-  Serial.print(F("Next Out: "));
-  Serial.println(S_trackBuf[track].nextOut);
+  Serial.print(F(" - Next Out: "));
+  Serial.print(S_trackBuf[track].nextOut);
+
+  Serial.print(F(" - Ready: "));
+  Serial.println(S_trackBuf[track].ready);
 }
 
 /*---------------------------------------------------------------------------*/

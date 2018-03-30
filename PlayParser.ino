@@ -446,6 +446,14 @@ void playWorker(unsigned int commandPtr, byte stringType)
         sequencerShowBufferInfo(currentTrack);
         break;    
 
+      case '?':
+        PLAYPARSER_PRINTLN(F(" + [ALL BUFFER]"));
+        for (int i=0; i<MAX_TRACKS; i++)
+        {
+          sequencerShowBufferInfo(i);
+        }
+        break;    
+      
       case '*': // asterisk - stop!
         PLAYPARSER_PRINTLN(F(" * [Stop]"));
         sequencerStop();
@@ -700,6 +708,10 @@ void playWorker(unsigned int commandPtr, byte stringType)
 #if defined(USE_SEQUENCER)
   else
   {
+    // ',' adds markers for earlier tracks, and if only a single track,
+    // we add it here.
+    sequencerPutByte(currentTrack, CMD_END_SEQUENCE);
+
     // End of PLAY string. Start playing.
     sequencerStart();
   }
