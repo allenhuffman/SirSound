@@ -1,4 +1,4 @@
-#define SIRSOUNDJR
+//#define SIRSOUNDJR
 #define USE_SEQUENCER
 //#define USE_SOFTSERIAL
 /*---------------------------------------------------------------------------*/
@@ -21,6 +21,9 @@ VERSION HISTORY:
 
 TODO:
 * Support various serial modes.
+* Pass serial bytes directly to PlayParser, rather than using the 255 byte
+  buffer. This will make use of the 64-byte Serial buffer. (Must test to see
+  if the parser can keep up at 9600 baud to not overflow the 64 byte buffer.)
 
 TOFIX:
 * ...
@@ -242,18 +245,24 @@ void setup()
   while (sequencerIsPlaying()==true);
   delay(2000);
 
-  // Relative octave jumps:
-  // Peter Gunn: L8 CCDCL>DD+L<CFE
-  // Popeye:     L16 EGGGL<FL>EL<GL>
 /*
+Relative octave jumps:
+Peter Gunn: L8 CCDCL>DD+L<CFE
+Popeye:     L16 EGGGL<FL>EL<GL>
+
 Frogger (2-voice):
 T2O2 L8 A+F+F+F+ A+F+F+F+ BBA+A+L4G+P4 L8BBA+A+L4G+ O+L8C+D+C+O-BA+G+L2F+ ,
 T2O1 L8 F+A+C+A+F+A+C+A+ G+BC+BG+BC+B G+BC+BG+BC+B G+BC+BL2F+
 
-^O4L32CGO+GO-
+^T2O4L32CGO+GO-
 
 Donkey Kong:
 T3O1L8CP4L8EP8L8GAG
+
+Bach - 2-Part Invention 13
+T2 O2 P16 L16 E A O+ C O- B E B O+ D L8 C E O- G# O+ E,
+O1 L8 A L4 O+ A L8 G# L16 A E A O+ C O- B E B O+ D
+
 */
 
 /*
