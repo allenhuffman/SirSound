@@ -147,13 +147,16 @@ PRINT #-2,"P2"
 
 SUBSTRINGS
 ----------
-"X" followed by a 1-2 character string name and the dollar sign and semi-colon. Substrings must be previously loaded using the "+" command.
+"X" followed by a 1-2 character string name and the dollar sign and semi-colon. Substrings must be previously loaded using the "+" command. Existing substrings can be overwritten with new data by using the "+" command. They can be deleted using the "-" command.
 ```
 REM LOAD A SUBSTRING
-PRINT #-2,"+V1$=CDEFGABC"
+PRINT #-2,"+V1$;CDEFGABC"
 
 REM PLAY A SUBSTRING
 PRINT #-2,"XV1$;"
+
+REM DELETE A SUBSTRING
+PRINT #-2,"-V1$;"
 ```
 
 MODIFIERS
@@ -225,12 +228,12 @@ REM REPEAT FOREVER
 PRINT #-2,"@0 O1 L2 C P2 C+ P2"
 ```
 
-ADD SUBSTRING
--------------
-"+xx=yyyy" add named substring (up to two characters, with the first being A-Z and the second being A-Z or 0-9). The substring will be available for use with the "X" command. This must be the start of a command.
+ADD/REPLACE SUBSTRING
+---------------------
+"+xx$;yyyy" add named substring (up to two characters, with the first being A-Z and the second being A-Z or 0-9). The substring will be available for use with the "X" command. This must be the start of a command.
 ```
 REM LOAD A SUBSTRING CALLED V1$
-PRINT #-2,"+V1$=CDEFGABC"
+PRINT #-2,"+V1$;CDEFGABC"
 ```
 
 DELETE SUBSTRING
@@ -238,10 +241,10 @@ DELETE SUBSTRING
 "-xx" delete named substring.
 ```
 REM DELETE A SUBSTRING CALLED V1$
-PRINT #-2,"-V1$"
+PRINT #-2,"-V1$;"
 
 REM DELETE ALL SUBSTRING
-PRINT #-2,"-*"
+PRINT #-2,"-*;"
 ```
 
 CHANGE SIRSOUND BAUD RATE
