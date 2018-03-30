@@ -395,7 +395,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
           noteDuration = (256/value/S_Tempo);
           
 #if defined(USE_SEQUENCER)
-          sequencerPutNote(currentTrack, REST, noteDuration);
+          sequencerPutNote(currentTrack, NOTE_REST, noteDuration);
 #else
           // Convert to 60/second
           // tm/60 = ms/1000
@@ -428,10 +428,11 @@ void playWorker(unsigned int commandPtr, byte stringType)
       case ',': // comma, next track
         PLAYPARSER_PRINTLN(F(" + [Next Track]"));
         // Mark end of current track sequence.
-        //sequencerPut(currentTrack, CMD_END_SEQUENCE);
+        sequencerPutByte(currentTrack, CMD_END_SEQUENCE);
         currentTrack++;
         // No error checking, since we don't know the capabilities
         // of the music player.
+        // TODO: MAX_TRACKS
         break;
 
 #if defined(USE_SEQUENCER)
@@ -439,6 +440,7 @@ void playWorker(unsigned int commandPtr, byte stringType)
         PLAYPARSER_PRINTLN(F(" + [OPTIMIZE]"));
         sequencerOptimizeBuffer();
         break;
+ 
       case '%':
         PLAYPARSER_PRINTLN(F(" + [BUFFER]"));
         sequencerShowBufferInfo(currentTrack);
@@ -484,12 +486,13 @@ void playWorker(unsigned int commandPtr, byte stringType)
         break;
 
       case '^': //  ^ - Interrupt
-        PLAYPARSER_PRINT(F(" ^ [Interrupt]"));
+        PLAYPARSER_PRINTLN(F(" ^ [Interrupt]"));
         sequencerPutByte(currentTrack, CMD_INTERRUPT);
         break;
-
+        
+      // Substrings
       case '+': // + - Add substring
-        PLAYPARSER_PRINT(F(" + [Add]"));
+        PLAYPARSER_PRINTLN(F(" + [Add]"));
         // Get 1-2 characters, up to $;
         value = checkForVariableName(&commandPtr, stringType, substringName);
         if (value != 0)
