@@ -113,6 +113,7 @@ LENGTH
 ```
 PRINT #-2,"L2 C D E L8 F D L4 E D C"
 ```
+NOTE: While odd value lengths can be used (i.e. L3, L7, etc.), they will cause issues with multiple tracks staying in sync. Mixing even and odd lengths will cause drift. 
 
 TEMPO
 -----
