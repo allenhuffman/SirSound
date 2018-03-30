@@ -39,7 +39,7 @@ POKE 150,41
 MC-10 Printer Baud
 ------------------
 POKE 16932,X - where "X" is one of the following:
-* 241 = 300 
+* 241 = 300 baud
 * 118 = 600 
 * 57 = 1200 
 * 26 = 2400 
@@ -71,10 +71,10 @@ NOTE
 ----
 N (optional) followed by a letter from "A" to "G" or a number from 1 to 12. When using letters, they can be optionally followed by "#" or "+" to make it as sharp, or "-" to make it flat. When using numbers, they must be separated by a ";" (semicolon).
 ```
-C  C# D  D# E  F  F# G  G# A  A# B  (sharps)
-C  C+ D  D+ E  F  F+ G  G+ A  A+ B  (sharps)
-1  2  3  4  5  6  7  8  9  10 11 12
-C  D- D  E- E  F  G- G  A- A  B- B  (flats)
+C   C#  D   D#  E   F   F#  G   G#  A   A#  B   (sharps using #)
+C   C+  D   D+  E   F   F+  G   G+  A   A+  B   (sharps using +)
+1   2   3   4   5   6   7   8   9   10  11  12  (note number)
+C   D-  D   E-  E   F   G-  G   A-  A   B-  B   (flats)
 ```
 Due to how the original PLAY command was coded by Microsoft, it also allows sharps and flats that would normally not be allowed. For instance, E# is the same as F, and F- is the same a E. Since notes are numbered 1-12, the code did not allow C- or B#. This quirk is replicated in this implementation.
 ```
@@ -239,7 +239,7 @@ PRINT #-2,"+V1$;CDEFGABC"
 
 DELETE SUBSTRING
 ----------------
-"-xx" delete named substring.
+"-xx$;" delete named substring. "-*" to delete all substrings.
 ```
 REM DELETE A SUBSTRING CALLED V1$
 PRINT #-2,"-V1$;"
