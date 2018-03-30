@@ -42,9 +42,9 @@ TOFIX:
 #define SEQUENCER_VERSION "0.8"
 
 #include "Sequencer.h"
-
-void tonePlayNote(byte note, unsigned long duration);
-
+#if defined(SIRSOUNDJR)
+#include "TonePlayer.h"
+#endif
 
 /*---------------------------------------------------------------------------*/
 // DEFINES / ENUMS
@@ -61,27 +61,21 @@ void tonePlayNote(byte note, unsigned long duration);
 // STATIC GLOBALS
 /*---------------------------------------------------------------------------*/
 
-static unsigned long  S_playNextTime[MAX_TRACKS];
-static byte           S_trackStatus[MAX_TRACKS]; // playing or not?
 static byte           S_tracksPlaying = 0;
 static byte           S_sequencesToPlay = 0;
 
 static byte           S_buffer[BUFFER_SIZE];
-static unsigned int   S_bufferStart[MAX_TRACKS];
-static unsigned int   S_bufferEnd[MAX_TRACKS];
 
-static unsigned int   S_nextIn[MAX_TRACKS];
-static unsigned int   S_nextOut[MAX_TRACKS];
-static unsigned int   S_ready[MAX_TRACKS];
-static unsigned int   S_repeatStart[MAX_TRACKS];
-static byte           S_repeatCount[MAX_TRACKS];
+static SequencerTrackStruct     S_trackBuf[MAX_TRACKS];
+static SequencerStruct          S_seq[MAX_TRACKS];
+static SequencerSubstringStruct S_substring[MAX_SUBSTRINGS];
 
 // TODO:
 //static unsigned int   S_interruptStart[MAX_TRACKS] = {0};
 //static unsigned int   S_interruptNextOut[MAX_TRACKS] = {0};
 
 // TODO: Sub-string support
-static unsigned int   S_substringStart[MAX_SUBSTRINGS];
+//static unsigned int   S_substringStart[MAX_SUBSTRINGS];
 
 /*---------------------------------------------------------------------------*/
 // FUNCTIONS
@@ -104,33 +98,36 @@ bool sequencerInit(unsigned int bufferSize, unsigned int substringSize)
   bufferStart = 0;
   for (track=0; track < MAX_TRACKS; track++)
   {
-    S_bufferStart[track] = bufferStart;
-    S_bufferEnd[track] = (bufferStart + trackBufferSize - 1);
+    S_trackBuf[track].start = bufferStart;
+    S_trackBuf[track].end = (bufferStart + trackBufferSize - 1);
 
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
     SEQUENCER_PRINT(F(" "));
-    SEQUENCER_PRINT(S_bufferStart[track]);
+    SEQUENCER_PRINT(S_trackBuf[track].start);
     SEQUENCER_PRINT(F(" - "));
-    SEQUENCER_PRINTLN(S_bufferEnd[track]);
+    SEQUENCER_PRINTLN(S_trackBuf[track].end);
 
-    bufferStart = S_bufferEnd[track]+1;
+    bufferStart = S_trackBuf[track].end+1;
 
-    S_nextIn[track] = S_bufferStart[track];
-    S_nextOut[track] = S_bufferStart[track];
-    S_ready[track] = 0;
-    S_repeatStart[track] = 0; // TBA
-    S_repeatCount[track] = 0; // TBA    
+    S_trackBuf[track].nextIn = S_trackBuf[track].start;
+    S_trackBuf[track].nextOut = S_trackBuf[track].start;
+    S_trackBuf[track].ready = 0;
+
+    S_seq[track].repeatStart = 0; // TBA
+    S_seq[track].repeatCount = 0; // TBA
+
+    S_substring[track].addStart = BUFFER_SIZE;
   }
   // TODO: Make last track extend to use any leftover bytes.
-  S_bufferEnd[MAX_TRACKS-1] = (bufferSize - 1);
+  S_trackBuf[MAX_TRACKS-1].end = (bufferSize - 1);
 
   // Substrings will start at (S_bufferEnd[MAX-TRACKS-1]) and end at
   // (BUFFER_SIZE - 1). Yes?
   SEQUENCER_PRINT(F("Substring Buffer Size: "));
-  SEQUENCER_PRINTLN(BUFFER_SIZE - S_bufferEnd[MAX_TRACKS-1] - 1);
+  SEQUENCER_PRINTLN(BUFFER_SIZE - S_trackBuf[MAX_TRACKS-1].end - 1);
   SEQUENCER_PRINT(F("Substring Start: "));
-  SEQUENCER_PRINTLN(S_bufferEnd[MAX_TRACKS-1]+1);
+  SEQUENCER_PRINTLN(S_trackBuf[MAX_TRACKS-1].end+1);
   SEQUENCER_PRINT(F("Substring End  : "));
   SEQUENCER_PRINTLN(BUFFER_SIZE - 1);
 
@@ -160,9 +157,9 @@ bool sequencerOptimizeBuffer()
     int           newpos;
     byte          temp, tomove;
   
-    buffersize = (S_bufferEnd[track] - S_bufferStart[track])+1;
-    shift = (S_bufferStart[track] - S_nextOut[track]);
-    pos = S_nextOut[track];
+    buffersize = (S_trackBuf[track].end - S_trackBuf[track].start)+1;
+    shift = (S_trackBuf[track].start - S_trackBuf[track].nextOut);
+    pos = S_trackBuf[track].nextOut;
   
     // Character to move is at pos.
     tomove = S_buffer[pos];
@@ -172,10 +169,10 @@ bool sequencerOptimizeBuffer()
     Serial.print("size  = "); Serial.println(buffersize);
     Serial.print("pos   = "); Serial.println(pos);
     Serial.print("shift = "); Serial.println(shift);
-    Serial.print("in    = "); Serial.println(S_nextIn[track]);
-    Serial.print("out   = "); Serial.println(S_nextOut[track]);
+    Serial.print("in    = "); Serial.println(S_trackBuf[track].nextIn);
+    Serial.print("out   = "); Serial.println(S_trackBuf[track].nextOut);
 
-    for (i=S_bufferStart[track]; i<S_bufferEnd[track]; i++)
+    for (i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
     {
       SEQUENCER_PRINT(S_buffer[i], DEC);
       SEQUENCER_PRINT(F(" "));
@@ -187,7 +184,7 @@ bool sequencerOptimizeBuffer()
     {
       // Location to move it to is newpos.
       newpos = sequencerAddShiftWithRollover(pos, shift,
-        S_bufferStart[track], S_bufferEnd[track]);
+        S_trackBuf[track].start, S_trackBuf[track].end);
       // Save what is there.
       temp = S_buffer[newpos];
       // Move character.
@@ -196,18 +193,19 @@ bool sequencerOptimizeBuffer()
       pos = newpos;
     }
     // Adjust positions.
-    S_nextIn[track] = sequencerAddShiftWithRollover(S_nextIn[track], shift,
-        S_bufferStart[track], S_bufferEnd[track]);
+    S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, shift,
+        S_trackBuf[track].start, S_trackBuf[track].end);
     
-    S_nextOut[track] = sequencerAddShiftWithRollover(S_nextOut[track], shift,
-        S_bufferStart[track], S_bufferEnd[track]);
+    S_trackBuf[track].nextOut = sequencerAddShiftWithRollover(S_trackBuf[track].nextOut, shift,
+        S_trackBuf[track].start, S_trackBuf[track].end);
 
-    S_repeatStart[track] = sequencerAddShiftWithRollover(S_repeatStart[track], shift,
-        S_bufferStart[track], S_bufferEnd[track]);
+    S_seq[track].repeatStart = sequencerAddShiftWithRollover(S_seq[track].repeatStart, shift,
+        S_trackBuf[track].start, S_trackBuf[track].end);
+
 /*
-    Serial.print("in    = "); Serial.println(S_nextIn[track]);
-    Serial.print("out   = "); Serial.println(S_nextOut[track]);
-    for (i=S_bufferStart[track]; i<S_bufferEnd[track]; i++)
+    Serial.print("in    = "); Serial.println(S_trackBuf[track].nextIn);
+    Serial.print("out   = "); Serial.println(S_trackBuf[track].nextOut);
+    for (i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
     {
       SEQUENCER_PRINT(S_buffer[i], DEC);
       SEQUENCER_PRINT(F(" "));
@@ -273,11 +271,11 @@ bool sequencerStart()
         SEQUENCER_PRINT(track);
         SEQUENCER_PRINTLN(F(" Start new sequence."));
         
-        S_playNextTime[track] = 0;
-        S_trackStatus[track] = TRACK_PLAYING;
+        S_seq[track].playNextTime = 0;
+        S_seq[track].trackStatus = TRACK_PLAYING;
         sequencerShowTrackStatus(track);
-        S_repeatCount[track] = 0;
-        S_repeatStart[track] = 0; // Not needed.
+        S_seq[track].repeatCount = 0;
+        S_seq[track].repeatStart = 0; // Not needed.
         // TODO: fix this, somewhere else.
         S_tracksPlaying = MAX_TRACKS;
       }
@@ -308,13 +306,15 @@ bool sequencerStop()
 
   for (track = 0; track < MAX_TRACKS; track++)
   {
-    S_trackStatus[track] = TRACK_IDLE;
+    S_seq[track].trackStatus  = TRACK_IDLE;
+    S_trackBuf[track].nextIn  = S_trackBuf[track].start;
+    S_trackBuf[track].nextOut = S_trackBuf[track].start;
+    S_trackBuf[track].ready   = 0;
+    S_seq[track].repeatCount  = 0;
+
     sequencerShowTrackStatus(track);
-    S_nextIn[track] = S_bufferStart[track];
-    S_nextOut[track] = S_bufferStart[track];
-    S_ready[track] = 0;
-    S_repeatCount[track] = 0;
   }
+
   S_sequencesToPlay = 0;
   S_tracksPlaying = 0;
 
@@ -343,7 +343,7 @@ unsigned int sequencerTrackBufferAvailable(byte track)
   
   if (track < MAX_TRACKS)
   {
-    bufferAvailable = (S_bufferEnd[track] - S_bufferStart[track]) + 1 - S_ready[track];
+    bufferAvailable = (S_trackBuf[track].end - S_trackBuf[track].start) + 1 - S_trackBuf[track].ready;
   }
   else
   {
@@ -390,32 +390,54 @@ bool sequencerPutByte(byte track, byte value)
 
   if ((track < MAX_TRACKS) && (sequencerTrackBufferAvailable(track) > 1))
   {
-    S_buffer[S_nextIn[track]] = value;
-    
-    S_nextIn[track]++;
-    if (S_nextIn[track] > S_bufferEnd[track])
+    if (value & CMD_BIT) // Is it a command byte?
     {
-      S_nextIn[track] = S_bufferStart[track];
-      SEQUENCER_PRINT(F("T"));
-      SEQUENCER_PRINT(track);
-      SEQUENCER_PRINT(F(": wrap to "));
-      SEQUENCER_PRINTLN(S_nextIn[track]);
-    }
+      byte cmd;
+      byte cmdValue;
+  
+      cmd = (value & CMD_MASK);
+      cmdValue = (value & CMD_VALUE_MASK);
 
-/*
-      else if (cmd==CMD_ADD_SUBSTRING)
+      if (value==CMD_ADD_SUBSTRING)
       {
-        cmdValue = (*value & CMD_VALUE_MASK);
-        
+        // If sequencer cmdValue exists, delete, optimize.
+        // Remember start location.
+        S_substring[track].addStart = S_trackBuf[track].nextIn;
+        SEQUENCER_PRINT(F("substring data will start at "));
+        SEQUENCER_PRINTLN(S_substring[track].addStart);
       }
       else if (cmd==CMD_DEL_SUBSTRING)
       {
-        cmdValue = (*value & CMD_VALUE_MASK);
-        #error        
+        SEQUENCER_PRINTLN(F("Delete Substring Here"));
       }
+      else if (cmd==CMD_END_SEQUENCE)
+      {
+        if (S_substring[track].addStart < BUFFER_SIZE)
+        {
+          SEQUENCER_PRINT(F("substring data will end at "));
+          SEQUENCER_PRINT(S_trackBuf[track].nextIn);
+          SEQUENCER_PRINT(F(" ("));
+          SEQUENCER_PRINT(S_trackBuf[track].nextIn - S_substring[track].addStart);
+          SEQUENCER_PRINTLN(F(" bytes)"));
+          
+          //
+        }
+      }
+    }
+    
+    S_buffer[S_trackBuf[track].nextIn] = value;
+    
+    S_trackBuf[track].nextIn++;
+    if (S_trackBuf[track].nextIn > S_trackBuf[track].end)
+    {
+      S_trackBuf[track].nextIn = S_trackBuf[track].start;
+      SEQUENCER_PRINT(F("T"));
+      SEQUENCER_PRINT(track);
+      SEQUENCER_PRINT(F(": wrap to "));
+      SEQUENCER_PRINTLN(S_trackBuf[track].nextIn);
+    }
 
- */
-    S_ready[track]++;
+    S_trackBuf[track].ready++;
 
     status = true;
   }
@@ -444,7 +466,7 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
     SEQUENCER_PRINT(F(" put("));
-    SEQUENCER_PRINT(S_nextIn[track]);
+    SEQUENCER_PRINT(S_trackBuf[track].nextIn);
     SEQUENCER_PRINT(F(") - "));
 
     status = sequencerPutByte(track, note);
@@ -468,7 +490,7 @@ bool sequencerPutNote(byte track, byte note, unsigned int noteLength)
         SEQUENCER_PRINT(F(" -> "));
 
         SEQUENCER_PRINT(F("rdy:"));
-        SEQUENCER_PRINT(S_ready[track]);
+        SEQUENCER_PRINT(S_trackBuf[track].ready);
         SEQUENCER_PRINTLN(F(" "));
       }
     }
@@ -493,14 +515,14 @@ bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck)
 
 fix_this_later: // HAHA! A GOTO IN C!
 
-  if ((track < MAX_TRACKS) && (S_ready[track] != 0))
+  if ((track < MAX_TRACKS) && (S_trackBuf[track].ready != 0))
   {
-    *value = S_buffer[S_nextOut[track]];
+    *value = S_buffer[S_trackBuf[track].nextOut];
 
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT(track);
     SEQUENCER_PRINT(F(" get("));
-    SEQUENCER_PRINT(S_nextOut[track]);
+    SEQUENCER_PRINT(S_trackBuf[track].nextOut);
     SEQUENCER_PRINT(F(") = "));
     if (cmdByteCheck == true)
     {
@@ -525,10 +547,10 @@ fix_this_later: // HAHA! A GOTO IN C!
     else
     */
     // Normal playing
-    S_nextOut[track]++;
-    if (S_nextOut[track] > S_bufferEnd[track])
+    S_trackBuf[track].nextOut++;
+    if (S_trackBuf[track].nextOut > S_trackBuf[track].end)
     {
-      S_nextOut[track] = S_bufferStart[track];
+      S_trackBuf[track].nextOut = S_trackBuf[track].start;
     }
 
     // Was it a command byte?
@@ -545,12 +567,12 @@ fix_this_later: // HAHA! A GOTO IN C!
       if ((cmd==CMD_REPEAT) || (cmd==CMD_END_SEQUENCE))
       {
         // Are we repeating?
-        if (S_repeatCount[track] > 0)
+        if (S_seq[track].repeatCount > 0)
         {
           // Decrement repeat count
-          S_repeatCount[track]--;
+          S_seq[track].repeatCount--;
           // Go back to saved start of sequence
-          S_nextOut[track] = S_repeatStart[track];
+          S_trackBuf[track].nextOut = S_seq[track].repeatStart;
           // TODO: escape
           goto fix_this_later;
         }
@@ -565,11 +587,11 @@ fix_this_later: // HAHA! A GOTO IN C!
         cmdValue = (*value & CMD_VALUE_MASK);
 
         // Save our current position.
-        S_repeatStart[track] = S_nextOut[track];
+        S_seq[track].repeatStart = S_trackBuf[track].nextOut;
         // And the repeat count.
-        S_repeatCount[track] = cmdValue;
+        S_seq[track].repeatCount = cmdValue;
         // Remove the CMD.
-        S_ready[track]--;
+        S_trackBuf[track].ready--;
         // TODO: escape
         goto fix_this_later;
       }
@@ -586,7 +608,7 @@ fix_this_later: // HAHA! A GOTO IN C!
           // TODO: make sure we can't play a substring from within a substring.
           // TODO: Oh, well BASIC allows that, so... how?
         }
-        S_ready[track]--;
+        S_trackBuf[track].ready--;
         // TODO: escape
         goto fix_this_later;
         */
@@ -595,13 +617,13 @@ fix_this_later: // HAHA! A GOTO IN C!
     } // CMD_BIT
 
     // If currently repeating...
-    if (S_repeatCount[track] == 0)
+    if (S_seq[track].repeatCount == 0)
     {
-      S_ready[track]--;
+      S_trackBuf[track].ready--;
     }
 
     status = true;
-  } // end of if ((track < MAX_TRACKS) && (S_ready[track] != 0))
+  } // end of if ((track < MAX_TRACKS) && (S_trackBuf[track].ready != 0))
   else
   {
     status = false;
@@ -609,6 +631,7 @@ fix_this_later: // HAHA! A GOTO IN C!
 
   return status;
 } // end of sequencerGetByte()
+
 
 /*---------------------------------------------------------------------------*/
 // SEQUENCER FUNCTIONS
@@ -641,29 +664,29 @@ bool sequencerHandler()
   for (track = 0; track < MAX_TRACKS; track++)
   {
     // Skip if already done.
-    if ((S_trackStatus[track] == TRACK_IDLE) || 
-        (S_trackStatus[track] == TRACK_COMPLETE))
+    if ((S_seq[track].trackStatus == TRACK_IDLE) || 
+        (S_seq[track].trackStatus == TRACK_COMPLETE))
     {
       continue;
     }
 
-    if (S_playNextTime[track] == 0)
+    if (S_seq[track].playNextTime == 0)
     {
-      S_playNextTime[track] = timeNow;
+      S_seq[track].playNextTime = timeNow;
     }
 
-    //if ( (long)(millis()-S_playNextTime[i] >=0 ) )
-    if ( (long)(timeNow > S_playNextTime[track]) )
+    //if ( (long)(millis()-S_seq[i].playNextTime >=0 ) )
+    if ( (long)(timeNow > S_seq[track].playNextTime) )
     {
       if (sequencerGetByte(track, &value, true) == true)
       {
         if (value & CMD_BIT) // Is it a command byte?
         {
           byte cmd;
-          //byte cmdValue;
+          byte cmdValue;
 
           cmd = (value & CMD_MASK);
-          //cmdValue = (value & CMD_VALUE_MASK);
+          cmdValue = (value & CMD_VALUE_MASK);
 
           if (cmd == CMD_END_SEQUENCE)
           {
@@ -672,7 +695,7 @@ bool sequencerHandler()
             SEQUENCER_PRINT(track);
             SEQUENCER_PRINTLN(F(" Out of data."));
 
-            S_trackStatus[track] = TRACK_COMPLETE;
+            S_seq[track].trackStatus = TRACK_COMPLETE;
             sequencerShowTrackStatus(track);
 
             S_tracksPlaying--; // One less track is playing.
@@ -691,8 +714,8 @@ bool sequencerHandler()
                 uint8_t i;
                 for (i=0; i < MAX_TRACKS; i++)
                 {
-                  S_playNextTime[i] = timeNow;
-                  S_trackStatus[i] = TRACK_PLAYING;
+                  S_seq[i].playNextTime = timeNow;
+                  S_seq[i].trackStatus = TRACK_PLAYING;
                   sequencerShowTrackStatus(track);
                 }
                 S_tracksPlaying = MAX_TRACKS;
@@ -733,7 +756,7 @@ bool sequencerHandler()
             SEQUENCER_PRINT(F("T"));
             SEQUENCER_PRINT(track);
             SEQUENCER_PRINT(F(" ["));
-            SEQUENCER_PRINT(S_playNextTime[track]);
+            SEQUENCER_PRINT(S_seq[track].playNextTime);
             SEQUENCER_PRINT(F("] "));
             SEQUENCER_PRINT(note);
             SEQUENCER_PRINT(F(", "));
@@ -745,7 +768,7 @@ bool sequencerHandler()
             SEQUENCER_PRINT(ms);
             SEQUENCER_PRINT(F("ms)"));
   
-            if (note != REST) // Don't call with invalid note.
+            if (note != NOTE_REST) // Don't call with invalid note.
             {
   #if defined(SIRSOUNDJR)
               tonePlayNote(note, ms);
@@ -753,14 +776,14 @@ bool sequencerHandler()
               playNote(track, note);
   #endif
             }
-            S_playNextTime[track] = S_playNextTime[track] + ms;
+            S_seq[track].playNextTime = S_seq[track].playNextTime + ms;
       
             SEQUENCER_PRINT(F(" next:"));
-            SEQUENCER_PRINTLN(S_playNextTime[track]);
+            SEQUENCER_PRINTLN(S_seq[track].playNextTime);
           }
         } // note
       }
-    } // end of if ( (long)(millis() > S_playNextTime[track]) )
+    } // end of if ( (long)(millis() > S_seq[track].playNextTime) )
   } // end of for (track = 0; track < MAX_TRACKS; track++)
 
   // Handle note play stuff (ADSR, volume decay, etc.).
@@ -770,6 +793,7 @@ bool sequencerHandler()
   return (S_tracksPlaying==0 ? false : true);
   
 } // end of sequencerHandler()
+
 
 /*---------------------------------------------------------------------------*/
 // DEBUG FUNCTIONS
@@ -825,7 +849,7 @@ static void sequencerShowTrackStatus(byte track)
   SEQUENCER_PRINT(F("T"));
   SEQUENCER_PRINT(track);
   SEQUENCER_PRINT(F(" "));
-  switch (S_trackStatus[track])
+  switch (S_seq[track].trackStatus)
   {
     case TRACK_IDLE:
       SEQUENCER_PRINTLN(F("TRACK_IDLE"));
@@ -850,6 +874,7 @@ static void sequencerShowTrackStatus(byte track)
 }
 
 /*---------------------------------------------------------------------------*/
+
 void sequencerShowBufferInfo(byte track)
 {
   Serial.print(F("T"));
@@ -857,13 +882,13 @@ void sequencerShowBufferInfo(byte track)
   Serial.println(F(": Info"));
 
   Serial.print(F("Size    : "));
-  Serial.println(S_bufferEnd[track] - S_bufferStart[track] + 1);
+  Serial.println(S_trackBuf[track].end - S_trackBuf[track].start + 1);
 
   Serial.print(F("Next In : "));
-  Serial.println(S_nextIn[track]);
+  Serial.println(S_trackBuf[track].nextIn);
 
   Serial.print(F("Next Out: "));
-  Serial.println(S_nextOut[track]);
+  Serial.println(S_trackBuf[track].nextOut);
 }
 
 /*---------------------------------------------------------------------------*/

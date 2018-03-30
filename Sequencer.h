@@ -1,8 +1,3 @@
-// BOF preprocessor bug prevent - insert me on top of your arduino-code
-// From: http://www.a-control.de/arduino-fehler/?lang=en
-#if 1
-__asm volatile ("nop");
-#endif
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 /*---------------------------------------------------------------------------*/
@@ -31,12 +26,32 @@ TOFIX:
 /*---------------------------------------------------------------------------*/
 // STRUCTURES
 /*---------------------------------------------------------------------------*/
-/*
-typedef struct {
-  byte note;
-  byte noteLength;
-} MusicStruct;
-*/
+
+typedef struct
+{
+  unsigned int  start;
+  unsigned int  nextIn;
+  unsigned int  nextOut;
+  unsigned int  end;
+  unsigned int  ready;
+} SequencerTrackStruct;
+
+typedef struct
+{
+  unsigned long playNextTime;
+  unsigned int  repeatStart;
+  byte          repeatCount;
+  byte          trackStatus;
+} SequencerStruct;
+
+typedef struct
+{
+  unsigned int  addStart;
+  unsigned int  start;
+  unsigned int  length; // to speed things up.
+} SequencerSubstringStruct;
+
+
 /*---------------------------------------------------------------------------*/
 // DEFINES / ENUMS
 /*---------------------------------------------------------------------------*/
@@ -44,22 +59,19 @@ typedef struct {
 #if defined(SIRSOUNDJR)
 #define MAX_TRACKS 1
 #else
-#define MAX_TRACKS  3
+#define MAX_TRACKS 3
 #endif
+
 #define BUFFER_SIZE 900
-//#define BUFFER_SIZE 100
 
 #define MAX_SUBSTRINGS      16  // 0-15
 
-// These are set to the lowest and highest note the chip can play.
-//#define LOWEST_NOTE   NB2
-
-//#define HIGHEST_NOTE  NC8 // It is really NC9, beyond piano.
-
 #define NOTE_MASK           0b01111111 // 0-127 only for notes.
+
 #define CMD_BIT             0b10000000 // bit(7)
 #define CMD_MASK            0b11110000
 #define CMD_VALUE_MASK      0b00001111
+
 #define CMD_VOLUME          0b10000000 // 0
 #define CMD_REPEAT          0b10010000 // 1
 #define CMD_INTERRUPT       0b10100000 // 2
@@ -69,7 +81,7 @@ typedef struct {
 #define CMD_6               0b11100000 // 6
 #define CMD_END_SEQUENCE    0b11110000 // 7
 
-#define REST                0b01111111 // 127
+#define NOTE_REST           0b01111111 // 127
 
 enum {
   TRACK_IDLE,
@@ -92,6 +104,12 @@ enum {
     A B C D E F G A B C D E F G A B C D E F G        G A B C D E F G A B C 
     0 0 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3        6 6 6 7 7 7 7 7 7 7 8 
 */
+
+// These are set to the lowest and highest note the chip can play.
+//#define LOWEST_NOTE   NB2
+
+//#define HIGHEST_NOTE  NC8 // It is really NC9, beyond piano.
+
 // 88 piano notes (sharps)
 enum sharps {
   NA0, NA0S, NB0, // 3
@@ -153,12 +171,18 @@ bool sequencerStop();
 bool sequencerInterrupt();
 bool sequencerIsPlaying();
 bool sequencerIsReady();
+
 bool sequencerPutByte(byte track, byte value);
 bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
 bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
+
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();
+
+#if MAX_SUBSTRINGS > 16
+#error Sequencer can only support up to 16 substrings.
+#endif
 
 #endif // SEQUENCER_H
 
