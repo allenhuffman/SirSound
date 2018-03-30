@@ -72,6 +72,7 @@ NOTE
 N (optional) followed by a letter from "A" to "G" or a number from 1 to 12. When using letters, they can be optionally followed by "#" or "+" to make it as sharp, or "-" to make it flat. When using numbers, they must be separated by a ";" (semicolon).
 ```
 C  C# D  D# E  F  F# G  G# A  A# B  (sharps)
+C  C+ D  D+ E  F  F+ G  G+ A  A+ B  (sharps)
 1  2  3  4  5  6  7  8  9  10 11 12
 C  D- D  E- E  F  G- G  A- A  B- B  (flats)
 ```
