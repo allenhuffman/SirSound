@@ -28,6 +28,7 @@ TOFIX:
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
+#include <ctype.h>
 typedef uint8_t byte;
 #define F(s) s
 
@@ -76,7 +77,8 @@ typedef struct
 #define MAX_TRACKS 3
 #endif
 
-#define BUFFER_SIZE 300
+//#define BUFFER_SIZE 300
+#define BUFFER_SIZE (40*MAX_TRACKS)
 
 #define MAX_SUBSTRINGS      16  // 0-15
 
@@ -179,7 +181,7 @@ enum flats {
 // EXTERNAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
 
-bool sequencerInit(unsigned int bufferSize, unsigned int substringSize);
+bool sequencerInit(unsigned int bufferSize);
 bool sequencerStart();
 bool sequencerStop();
 bool sequencerInterrupt();
@@ -193,6 +195,7 @@ bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();
+void sequencerShowTrackInfo(byte track);
 
 #if MAX_SUBSTRINGS > 16
 #error Sequencer can only support up to 16 substrings.

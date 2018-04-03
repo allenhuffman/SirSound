@@ -55,6 +55,7 @@ TOFIX:
 #if defined(C)
 #define SEQUENCER_PRINT(s)          printf("%s", s)
 #define SEQUENCER_PRINT_INT(s)      printf("%u", s)
+#define SEQUENCER_PRINT_HEX(s)      printf("%x", s)
 #define SEQUENCER_PRINT_LONG(s)     printf("%lu", s)
 #define SEQUENCER_PRINTLN(s)        printf("%s\n", s)
 #define SEQUENCER_PRINTLN_INT(s)    printf("%u\n", s)
@@ -62,6 +63,7 @@ TOFIX:
 #else
 #define SEQUENCER_PRINT(...)        Serial.print(__VA_ARGS__)
 #define SEQUENCER_PRINT_INT(...)    Serial.print(__VA_ARGS__)
+#define SEQUENCER_PRINT_HEX(s)      Serial.print(s, HEX)
 #define SEQUENCER_PRINT_LONG(...)   Serial.print(__VA_ARGS__)
 #define SEQUENCER_PRINTLN(...)      Serial.println(__VA_ARGS__)
 #define SEQUENCER_PRINTLN_INT(...)  Serial.println(__VA_ARGS__)
@@ -92,11 +94,17 @@ static SequencerSubstringStruct S_substring[MAX_SUBSTRINGS];
 // TODO: Sub-string support
 //static unsigned int   S_substringStart[MAX_SUBSTRINGS];
 
+
+/*---------------------------------------------------------------------------*/
 // LOCAL PROTOTYPES
+/*---------------------------------------------------------------------------*/
 unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
   unsigned int start, unsigned int end);
+
 static void sequencerShowTrackStatus(byte track);
+
 static void sequencerShowByte(byte value);
+
 
 /*---------------------------------------------------------------------------*/
 // FUNCTIONS
@@ -105,7 +113,7 @@ static void sequencerShowByte(byte value);
  * bufferSize - size to use for track sequencer
  * substringSize - size to use for substrings
  */
-bool sequencerInit(unsigned int bufferSize, unsigned int substringSize)
+bool sequencerInit(unsigned int bufferSize)
 {
   byte          track;
   unsigned int  trackBufferSize;
@@ -899,11 +907,18 @@ static void sequencerShowTrackStatus(byte track)
 
 /*---------------------------------------------------------------------------*/
 
-void sequencerShowBufferInfo(byte track)
+void sequencerShowBufferInfo()
+{
+
+}
+
+void sequencerShowTrackInfo(byte track)
 {
 #if defined(C)
-  printf("T%u Info - Size: %u - Next In : %u - Next Out: %u - Ready: %u\n",
+  printf("T%u (%03u-%03u) - Size: %03u - Next In : %03u - Next Out: %03u - Ready: %u\n",
          track,
+         S_trackBuf[track].start,
+         S_trackBuf[track].end,
          (S_trackBuf[track].end - S_trackBuf[track].start + 1),
          S_trackBuf[track].nextIn,
          S_trackBuf[track].nextOut,
@@ -911,9 +926,12 @@ void sequencerShowBufferInfo(byte track)
 #else
   Serial.print(F("T"));
   Serial.print(track);
-  Serial.print(F(" Info - "));
+  Serial.print(F(" ("));
+  Serial.print(S_trackBuf[track].start);
+  Serial.print(F("-"));
+  Serial.print(S_trackBuf[track].end);
 
-  Serial.print(F("Size: "));
+  Serial.print(F(") - Size:"));
   Serial.print(S_trackBuf[track].end - S_trackBuf[track].start + 1);
 
   Serial.print(F(" - Next In : "));
@@ -925,6 +943,24 @@ void sequencerShowBufferInfo(byte track)
   Serial.print(F(" - Ready: "));
   Serial.println(S_trackBuf[track].ready);
 #endif // defined
+
+  for (unsigned int i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
+  {
+    #if defined(C)
+    if (isprint(S_buffer[i]))
+    {
+      printf("%c ", S_buffer[i]);
+    }
+    else
+    {
+      printf(". ");
+    }
+    #else
+    SEQUENCER_PRINT_HEX(S_buffer[i]);
+    SEQUENCER_PRINT(F(" "));
+    #endif
+  }
+  SEQUENCER_PRINTLN("");
 }
 
 #if defined(C)

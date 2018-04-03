@@ -443,14 +443,14 @@ void playWorker(unsigned int commandPtr, byte stringType)
  
       case '%':
         PLAYPARSER_PRINTLN(F(" + [BUFFER]"));
-        sequencerShowBufferInfo(currentTrack);
+        sequencerShowTrackInfo(currentTrack);
         break;    
 
       case '?':
         PLAYPARSER_PRINTLN(F(" + [ALL BUFFER]"));
         for (int i=0; i<MAX_TRACKS; i++)
         {
-          sequencerShowBufferInfo(i);
+          sequencerShowTrackInfo(i);
         }
         break;    
       

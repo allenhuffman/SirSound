@@ -80,7 +80,7 @@ void setup()
   muteAll(); // Just in case...
 #endif
   // TODO: Need a PlayParserInit() routine of some kind.
-  sequencerInit(BUFFER_SIZE, 0);
+  sequencerInit(BUFFER_SIZE);
   //sequencerInit(BUFFER_SIZE-64, 64);
   clearSubstrings();
 
