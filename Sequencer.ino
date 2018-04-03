@@ -100,11 +100,10 @@ static SequencerSubstringStruct S_substring[MAX_SUBSTRINGS];
 /*---------------------------------------------------------------------------*/
 // LOCAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
-void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount);
-void sequencerReverseBytes(byte *startPtr, byte *endPtr);
 
-unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
-  unsigned int start, unsigned int end);
+static void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount);
+
+static void sequencerReverseBytes(byte *startPtr, byte *endPtr);
 
 static void sequencerShowTrackStatus(byte track);
 
@@ -207,33 +206,10 @@ void sequencerReverseBytes(byte *startPtr, byte *endPtr)
   }
 }
 
-unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
-  unsigned int start, unsigned int end)
-{
-  unsigned int  bufferSize;
-  int           newPos;
-
-  bufferSize = (end - start)+1;
-
-  newPos = (pos + shift);
-
-  // Handle rollover.
-  if (newPos < (int)start)
-  {
-    newPos = (newPos + bufferSize);
-  }
-  else if (newPos > (int)end)
-  {
-    newPos = (newPos - bufferSize);
-  }
-
-  return newPos;
-}
-
 /*---------------------------------------------------------------------------*/
 
 /*
- * Start squencer.
+ * Start sequencer.
  */
 bool sequencerStart()
 {
