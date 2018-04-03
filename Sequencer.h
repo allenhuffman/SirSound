@@ -78,7 +78,7 @@ typedef struct
 #endif
 
 //#define BUFFER_SIZE 300
-#define BUFFER_SIZE (40*MAX_TRACKS)
+#define BUFFER_SIZE (39*MAX_TRACKS)
 
 #define MAX_SUBSTRINGS      16  // 0-15
 

@@ -100,6 +100,9 @@ static SequencerSubstringStruct S_substring[MAX_SUBSTRINGS];
 /*---------------------------------------------------------------------------*/
 // LOCAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
+void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount);
+void sequencerReverseBytes(byte *startPtr, byte *endPtr);
+
 unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
   unsigned int start, unsigned int end);
 
@@ -172,43 +175,37 @@ bool sequencerOptimizeBuffer()
 
   for (track=0; track < MAX_TRACKS; track++)
   {
-    int           i;
-    unsigned int  buffersize;
-    int           shift;
-    unsigned int  startPos, endPos;
-    byte          saved;
+    byte          *startPtr;
+    byte          *endPtr;
+    unsigned int  rotateLeftAmount;
 
-    buffersize = (S_trackBuf[track].end - S_trackBuf[track].start)+1;
-    shift = (S_trackBuf[track].start - S_trackBuf[track].nextOut);
-
-    startPos = S_trackBuf[track].start;
-    endPos = S_trackBuf[track].end;
-
-    // INNEFCIENT BRUTE FORCE BUFFER SHIFT
-    if (shift > 0) // shifting right
-    {
-      for (i=0; i<shift; i++)
-      {
-        saved = S_buffer[endPos]; // save last byte
-        memmove(&S_buffer[startPos+1], &S_buffer[startPos], buffersize-1);
-        S_buffer[startPos] = saved;
-      }
-    }
-    else if (shift < 0) // shifting left
-    {
-      for (i=shift; i<0; i++)
-      {
-        saved = S_buffer[startPos];
-        memmove(&S_buffer[startPos], &S_buffer[startPos+1], buffersize-1);
-        S_buffer[endPos] = saved;
-      }
-    }
-    // else 0, nothing to do.
-
+    startPtr          = &S_buffer[S_trackBuf[track].start];
+    endPtr            = &S_buffer[S_trackBuf[track].end];
+    rotateLeftAmount  = (S_trackBuf[track].nextOut - S_trackBuf[track].start);
+    sequencerRotateBytes(startPtr, endPtr, rotateLeftAmount);
   } // end of for()
 
   return true;
 } // end of seqencerInit()
+
+void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount)
+{
+  sequencerReverseBytes(startPtr, endPtr);
+  sequencerReverseBytes(startPtr, endPtr-rotateLeftAmount);
+  sequencerReverseBytes(endPtr-rotateLeftAmount+1, endPtr);
+}
+
+void sequencerReverseBytes(byte *startPtr, byte *endPtr)
+{
+  while (startPtr < endPtr)
+  {
+    char temp = *startPtr;
+    *startPtr = *endPtr;
+    *endPtr   = temp;
+    startPtr++;
+    endPtr--;
+  }
+}
 
 unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
   unsigned int start, unsigned int end)
@@ -510,7 +507,7 @@ fix_this_later: // HAHA! A GOTO IN C!
   {
     *value = S_buffer[S_trackBuf[track].nextOut];
     // Erase old value.
-    //S_buffer[S_trackBuf[track].nextOut] = 0;
+    S_buffer[S_trackBuf[track].nextOut] = 0;
     // Can't do that on Arduino because we put bytes back sometime.
     // TODO: put back byte.
 
