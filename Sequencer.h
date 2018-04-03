@@ -195,7 +195,10 @@ bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
 bool sequencerHandler();
 
 unsigned int sequencerBufferAvailable();
+
+void sequencerShowBufferInfo();
 void sequencerShowTrackInfo(byte track);
+bool sequencerOptimizeBuffer();
 
 #if MAX_SUBSTRINGS > 16
 #error Sequencer can only support up to 16 substrings.

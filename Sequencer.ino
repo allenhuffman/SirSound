@@ -161,12 +161,12 @@ bool sequencerInit(unsigned int bufferSize)
 /*
  * To make room for substrings, the track buffers will need to have their
  * sizes reduced. To allow this, we need a routine to compress the used
- * data down and ajust all the pointers to it.
+ * data down and adjust all the pointers to it.
  */
 
 bool sequencerOptimizeBuffer()
 {
-  byte          track;
+  byte track;
 
   SEQUENCER_PRINTLN(F("Optimizing Buffer."));
 
@@ -175,8 +175,8 @@ bool sequencerOptimizeBuffer()
     int           i;
     unsigned int  buffersize;
     int           shift;
-    byte          saved;
     unsigned int  startPos, endPos;
+    byte          saved;
 
     buffersize = (S_trackBuf[track].end - S_trackBuf[track].start)+1;
     shift = (S_trackBuf[track].start - S_trackBuf[track].nextOut);
@@ -509,6 +509,10 @@ fix_this_later: // HAHA! A GOTO IN C!
   if ((track < MAX_TRACKS) && (S_trackBuf[track].ready != 0))
   {
     *value = S_buffer[S_trackBuf[track].nextOut];
+    // Erase old value.
+    //S_buffer[S_trackBuf[track].nextOut] = 0;
+    // Can't do that on Arduino because we put bytes back sometime.
+    // TODO: put back byte.
 
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT_INT(track);
@@ -913,7 +917,7 @@ void sequencerShowTrackInfo(byte track)
   Serial.println(S_trackBuf[track].ready);
 #endif // defined
 
-  for (unsigned int i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
+  for (unsigned int i=S_trackBuf[track].start; i<=S_trackBuf[track].end; i++)
   {
     #if defined(C)
     if (isprint(S_buffer[i]))
