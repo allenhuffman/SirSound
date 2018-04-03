@@ -105,6 +105,9 @@ static void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAm
 
 static void sequencerReverseBytes(byte *startPtr, byte *endPtr);
 
+unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
+  unsigned int start, unsigned int end);
+
 static void sequencerShowTrackStatus(byte track);
 
 static void sequencerShowByte(byte value);
@@ -182,17 +185,32 @@ bool sequencerOptimizeBuffer()
     endPtr            = &S_buffer[S_trackBuf[track].end];
     rotateLeftAmount  = (S_trackBuf[track].nextOut - S_trackBuf[track].start);
     sequencerRotateBytes(startPtr, endPtr, rotateLeftAmount);
+
+    // Adjust positions.
+    S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, -rotateLeftAmount,
+        S_trackBuf[track].start, S_trackBuf[track].end);
+
+    S_trackBuf[track].nextOut = sequencerAddShiftWithRollover(S_trackBuf[track].nextOut, -rotateLeftAmount,
+        S_trackBuf[track].start, S_trackBuf[track].end);
+
+    S_seq[track].repeatStart = sequencerAddShiftWithRollover(S_seq[track].repeatStart, -rotateLeftAmount,
+        S_trackBuf[track].start, S_trackBuf[track].end);
   } // end of for()
 
   return true;
 } // end of seqencerInit()
 
+
 void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount)
 {
-  sequencerReverseBytes(startPtr, endPtr);
-  sequencerReverseBytes(startPtr, endPtr-rotateLeftAmount);
-  sequencerReverseBytes(endPtr-rotateLeftAmount+1, endPtr);
+  if ((startPtr < endPtr) && (rotateLeftAmount != 0))
+  {
+    sequencerReverseBytes(startPtr, endPtr);
+    sequencerReverseBytes(startPtr, endPtr-rotateLeftAmount);
+    sequencerReverseBytes(endPtr-rotateLeftAmount+1, endPtr);
+  }
 }
+
 
 void sequencerReverseBytes(byte *startPtr, byte *endPtr)
 {
@@ -204,6 +222,30 @@ void sequencerReverseBytes(byte *startPtr, byte *endPtr)
     startPtr++;
     endPtr--;
   }
+}
+
+
+unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
+  unsigned int start, unsigned int end)
+{
+  unsigned int  bufferSize;
+  int           newPos;
+
+  bufferSize = (end - start)+1;
+
+  newPos = (pos + shift);
+
+  // Handle rollover.
+  if (newPos < (int)start)
+  {
+    newPos = (newPos + bufferSize);
+  }
+  else if (newPos > (int)end)
+  {
+    newPos = (newPos - bufferSize);
+  }
+
+  return newPos;
 }
 
 /*---------------------------------------------------------------------------*/
