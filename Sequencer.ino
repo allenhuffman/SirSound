@@ -43,6 +43,8 @@ TOFIX:
 
 #define SEQUENCER_VERSION "0.8"
 
+#include <string.h> // memmove()
+
 #include "Sequencer.h"
 #if defined(SIRSOUNDJR)
 #include "TonePlayer.h"
@@ -54,12 +56,12 @@ TOFIX:
 #if defined(DEBUG_SEQUENCER)
 #if defined(C)
 #define SEQUENCER_PRINT(s)          printf("%s", s)
-#define SEQUENCER_PRINT_INT(s)      printf("%u", s)
+#define SEQUENCER_PRINT_INT(s)      printf("%d", s)
 #define SEQUENCER_PRINT_HEX(s)      printf("%x", s)
-#define SEQUENCER_PRINT_LONG(s)     printf("%lu", s)
+#define SEQUENCER_PRINT_LONG(s)     printf("%ld", s)
 #define SEQUENCER_PRINTLN(s)        printf("%s\n", s)
-#define SEQUENCER_PRINTLN_INT(s)    printf("%u\n", s)
-#define SEQUENCER_PRINTLN_LONG(s)   printf("%lu\n", s)
+#define SEQUENCER_PRINTLN_INT(s)    printf("%d\n", s)
+#define SEQUENCER_PRINTLN_LONG(s)   printf("%ld\n", s)
 #else
 #define SEQUENCER_PRINT(...)        Serial.print(__VA_ARGS__)
 #define SEQUENCER_PRINT_INT(...)    Serial.print(__VA_ARGS__)
@@ -151,15 +153,6 @@ bool sequencerInit(unsigned int bufferSize)
   // TODO: Make last track extend to use any leftover bytes.
   S_trackBuf[MAX_TRACKS-1].end = (bufferSize - 1);
 
-  // Substrings will start at (S_bufferEnd[MAX-TRACKS-1]) and end at
-  // (BUFFER_SIZE - 1). Yes?
-  SEQUENCER_PRINT(F("Substring Buffer Size: "));
-  SEQUENCER_PRINTLN_INT(BUFFER_SIZE - S_trackBuf[MAX_TRACKS-1].end - 1);
-  SEQUENCER_PRINT(F("Substring Start: "));
-  SEQUENCER_PRINTLN_INT(S_trackBuf[MAX_TRACKS-1].end+1);
-  SEQUENCER_PRINT(F("Substring End  : "));
-  SEQUENCER_PRINTLN_INT(BUFFER_SIZE - 1);
-
   return true;
 } // end of seqencerInit()
 
@@ -179,68 +172,39 @@ bool sequencerOptimizeBuffer()
 
   for (track=0; track < MAX_TRACKS; track++)
   {
-    unsigned int  i;
+    int           i;
     unsigned int  buffersize;
     int           shift;
-    unsigned int  pos;
-    int           newpos;
-    byte          temp, tomove;
+    byte          saved;
+    unsigned int  startPos, endPos;
 
     buffersize = (S_trackBuf[track].end - S_trackBuf[track].start)+1;
     shift = (S_trackBuf[track].start - S_trackBuf[track].nextOut);
-    pos = S_trackBuf[track].nextOut;
 
-    // Character to move is at pos.
-    tomove = S_buffer[pos];
-/*
-    SEQUENCER_PRINT(F("Track "));
-    SEQUENCER_PRINTLN(track);
-    Serial.print("size  = "); Serial.println(buffersize);
-    Serial.print("pos   = "); Serial.println(pos);
-    Serial.print("shift = "); Serial.println(shift);
-    Serial.print("in    = "); Serial.println(S_trackBuf[track].nextIn);
-    Serial.print("out   = "); Serial.println(S_trackBuf[track].nextOut);
+    startPos = S_trackBuf[track].start;
+    endPos = S_trackBuf[track].end;
 
-    for (i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
+    // INNEFCIENT BRUTE FORCE BUFFER SHIFT
+    if (shift > 0) // shifting right
     {
-      SEQUENCER_PRINT(S_buffer[i], DEC);
-      SEQUENCER_PRINT(F(" "));
+      for (i=0; i<shift; i++)
+      {
+        saved = S_buffer[endPos]; // save last byte
+        memmove(&S_buffer[startPos+1], &S_buffer[startPos], buffersize-1);
+        S_buffer[startPos] = saved;
+      }
     }
-    SEQUENCER_PRINTLN();
-*/
-
-    for (i=0; i < buffersize; i++)
+    else if (shift < 0) // shifting left
     {
-      // Location to move it to is newpos.
-      newpos = sequencerAddShiftWithRollover(pos, shift,
-        S_trackBuf[track].start, S_trackBuf[track].end);
-      // Save what is there.
-      temp = S_buffer[newpos];
-      // Move character.
-      S_buffer[newpos] = tomove;
-      tomove = temp;
-      pos = newpos;
+      for (i=shift; i<0; i++)
+      {
+        saved = S_buffer[startPos];
+        memmove(&S_buffer[startPos], &S_buffer[startPos+1], buffersize-1);
+        S_buffer[endPos] = saved;
+      }
     }
-    // Adjust positions.
-    S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, shift,
-        S_trackBuf[track].start, S_trackBuf[track].end);
+    // else 0, nothing to do.
 
-    S_trackBuf[track].nextOut = sequencerAddShiftWithRollover(S_trackBuf[track].nextOut, shift,
-        S_trackBuf[track].start, S_trackBuf[track].end);
-
-    S_seq[track].repeatStart = sequencerAddShiftWithRollover(S_seq[track].repeatStart, shift,
-        S_trackBuf[track].start, S_trackBuf[track].end);
-
-/*
-    Serial.print("in    = "); Serial.println(S_trackBuf[track].nextIn);
-    Serial.print("out   = "); Serial.println(S_trackBuf[track].nextOut);
-    for (i=S_trackBuf[track].start; i<S_trackBuf[track].end; i++)
-    {
-      SEQUENCER_PRINT(S_buffer[i], DEC);
-      SEQUENCER_PRINT(F(" "));
-    }
-    SEQUENCER_PRINTLN();
-*/
   } // end of for()
 
   return true;
@@ -909,7 +873,12 @@ static void sequencerShowTrackStatus(byte track)
 
 void sequencerShowBufferInfo()
 {
+  byte track;
 
+  for (track = 0; track < MAX_TRACKS; track++)
+  {
+    sequencerShowTrackInfo(track);
+  }
 }
 
 void sequencerShowTrackInfo(byte track)
