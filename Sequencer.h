@@ -13,6 +13,7 @@ VERSION HISTORY:
 2017-03-06 0.1 allenh - Adding END and REST defines. Fixing lowest note.
 2018-03-07 0.2 allenh - Making note length match CoCo PLAY command.
                         Renaming duration to noteLength.
+2018-04-03     allenh - Updated with standard-C defines for testing.
 
 TODO:
 * ...
@@ -22,6 +23,19 @@ TOFIX:
 
 */
 /*---------------------------------------------------------------------------*/
+#if defined(C)
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <time.h>
+typedef uint8_t byte;
+#define F(s) s
+
+void playHandler();
+void setVolume(uint8_t track, uint8_t value);
+void playNote(uint8_t track, uint8_t note);
+unsigned int millis();
+#endif // defined
 
 /*---------------------------------------------------------------------------*/
 // STRUCTURES
@@ -101,8 +115,8 @@ enum {
    # # | # # | # # # | # # | # # # | # # | # #......# # # | # # | # # # | #
    # # | # # | # # # | # # | # # # | # # | # #......# # # | # # | # # # | #
    |_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|......|_|_|_|_|_|_|_|_|_|_|_|
-    A B C D E F G A B C D E F G A B C D E F G        G A B C D E F G A B C 
-    0 0 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3        6 6 6 7 7 7 7 7 7 7 8 
+    A B C D E F G A B C D E F G A B C D E F G        G A B C D E F G A B C
+    0 0 1 1 1 1 1 1 1 2 2 2 2 2 2 2 3 3 3 3 3        6 6 6 7 7 7 7 7 7 7 8
 */
 
 // These are set to the lowest and highest note the chip can play.
