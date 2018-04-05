@@ -181,27 +181,30 @@ enum flats {
 // EXTERNAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
 
+// Sequencer functions
 bool sequencerInit(unsigned int bufferSize);
 bool sequencerStart();
 bool sequencerStop();
-bool sequencerInterrupt();
+bool sequencerHandler();
+
 bool sequencerIsPlaying();
 bool sequencerIsReady();
 
+// Track buffer functions
 bool sequencerPutByte(byte track, byte value);
 bool sequencerPutNote(byte track, byte note, unsigned int noteLength);
 bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
 
-bool sequencerHandler();
+bool sequencerOptimizeTrackBuffer(byte track);
+void sequencerShowTrackInfo(byte track);
 
+// Buffer functions
 unsigned int sequencerGetLargestFreeBufferAvailable();
 unsigned int sequencerGetSmallestFreeBufferAvailable();
-
-void sequencerShowBufferInfo();
-void sequencerShowTrackInfo(byte track);
 bool sequencerOptimizeBuffer();
-bool sequencerOptimizeTrackBuffer(byte track);
+void sequencerShowBufferInfo();
 
+// Substring buffer functions
 bool sequencerAddSubstringBuffer(unsigned int bytesToAdd);
 bool sequencerOptimizeSubstringBuffer();
 
