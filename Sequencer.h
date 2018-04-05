@@ -78,7 +78,7 @@ typedef struct
 #endif
 
 //#define BUFFER_SIZE 300
-#define BUFFER_SIZE (39*MAX_TRACKS)
+#define BUFFER_SIZE (38*MAX_TRACKS)
 
 #define MAX_SUBSTRINGS      16  // 0-15
 
@@ -140,7 +140,7 @@ enum sharps {
 };
 
 #if 0
-// 88 paino notes (flats)
+// 88 piano notes (flats)
 enum flats {
   NA0, NB0F, NB0, // 3
   NC1, ND1F, ND1, NE1F, NE1, NF1, NG1F, NG1, NA1F, NA1, NB1F, NB1, // 12
@@ -194,11 +194,15 @@ bool sequencerGetByte(byte track, byte *value, bool cmdByteCheck);
 
 bool sequencerHandler();
 
-unsigned int sequencerBufferAvailable();
+unsigned int sequencerGetLargestFreeBufferAvailable();
+unsigned int sequencerGetSmallestFreeBufferAvailable();
 
 void sequencerShowBufferInfo();
 void sequencerShowTrackInfo(byte track);
 bool sequencerOptimizeBuffer();
+
+bool sequencerAddSubstringBuffer(unsigned int bytesToAdd);
+bool sequencerOptimizeSubstringBuffer();
 
 #if MAX_SUBSTRINGS > 16
 #error Sequencer can only support up to 16 substrings.

@@ -80,28 +80,21 @@ TOFIX:
 // STATIC GLOBALS
 /*---------------------------------------------------------------------------*/
 
-static byte           S_tracksPlaying = 0;
-static byte           S_sequencesToPlay = 0;
+static byte                     S_tracksPlaying = 0;
+static byte                     S_sequencesToPlay = 0;
 
-static byte           S_buffer[BUFFER_SIZE];
+static byte                     S_buffer[BUFFER_SIZE];
 
 static SequencerTrackStruct     S_trackBuf[MAX_TRACKS];
 static SequencerStruct          S_seq[MAX_TRACKS];
 static SequencerSubstringStruct S_substring[MAX_SUBSTRINGS];
-
-// TODO:
-//static unsigned int   S_interruptStart[MAX_TRACKS] = {0};
-//static unsigned int   S_interruptNextOut[MAX_TRACKS] = {0};
-
-// TODO: Sub-string support
-//static unsigned int   S_substringStart[MAX_SUBSTRINGS];
 
 
 /*---------------------------------------------------------------------------*/
 // LOCAL PROTOTYPES
 /*---------------------------------------------------------------------------*/
 
-static void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount);
+static void sequencerRotateBytesLeft(byte *startPtr, byte *endPtr, byte rotateLeftAmount);
 
 static void sequencerReverseBytes(byte *startPtr, byte *endPtr);
 
@@ -161,6 +154,9 @@ bool sequencerInit(unsigned int bufferSize)
   return true;
 } // end of seqencerInit()
 
+
+/*---------------------------------------------------------------------------*/
+// TRACK BUFFER FUNCTIONS
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -168,7 +164,6 @@ bool sequencerInit(unsigned int bufferSize)
  * sizes reduced. To allow this, we need a routine to compress the used
  * data down and adjust all the pointers to it.
  */
-
 bool sequencerOptimizeBuffer()
 {
   byte track;
@@ -184,7 +179,7 @@ bool sequencerOptimizeBuffer()
     startPtr          = &S_buffer[S_trackBuf[track].start];
     endPtr            = &S_buffer[S_trackBuf[track].end];
     rotateLeftAmount  = (S_trackBuf[track].nextOut - S_trackBuf[track].start);
-    sequencerRotateBytes(startPtr, endPtr, rotateLeftAmount);
+    sequencerRotateBytesLeft(startPtr, endPtr, rotateLeftAmount);
 
     // Adjust positions.
     S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, -rotateLeftAmount,
@@ -201,7 +196,7 @@ bool sequencerOptimizeBuffer()
 } // end of seqencerInit()
 
 
-void sequencerRotateBytes(byte *startPtr, byte *endPtr, byte rotateLeftAmount)
+void sequencerRotateBytesLeft(byte *startPtr, byte *endPtr, byte rotateLeftAmount)
 {
   if ((startPtr < endPtr) && (rotateLeftAmount != 0))
   {
@@ -249,14 +244,90 @@ unsigned int sequencerAddShiftWithRollover(unsigned int pos, int shift,
 }
 
 /*---------------------------------------------------------------------------*/
+// SUBSTRING BUFFER
+/*---------------------------------------------------------------------------*/
+
+/*
+ * Substring buffer is like an additional track.
+ */
+
+/*
+ * Reduce size of all track buffers enough to add this many bytes to the
+ * substring buffer area.
+ */
+bool sequencerAddSubstringBuffer(unsigned int bytesToAdd)
+{
+  bool status;
+
+  status = false;
+
+  if (bytesToAdd > sequencerGetSmallestFreeBufferAvailable())
+  {
+    SEQUENCER_PRINT(F("Not enough room to add bytes: "));
+    SEQUENCER_PRINTLN_INT(bytesToAdd);
+
+    status = false;
+  }
+  else // There is enough room.
+  {
+    byte          track;
+    unsigned int  reduceBy;
+
+    sequencerOptimizeBuffer();
+
+    // Reduce each track buffer by (bytesToAdd / MAX_TRACKS)
+    // Round up to be divisible by MAX_TRACKS
+    do
+    {
+      reduceBy = (bytesToAdd / MAX_TRACKS);
+    } while ((reduceBy * MAX_TRACKS) < bytesToAdd++);
+
+    for (track = 0; track < MAX_TRACKS; track++)
+    {
+      SEQUENCER_PRINT(F("T"));
+      SEQUENCER_PRINT_INT(track);
+      SEQUENCER_PRINT(F(" from "));
+      SEQUENCER_PRINT_INT(S_trackBuf[track].start);
+      SEQUENCER_PRINT(F("-"));
+      SEQUENCER_PRINT_INT(S_trackBuf[track].end);
+      SEQUENCER_PRINT(F(" to "));
+      S_trackBuf[track].start = S_trackBuf[track].start - (reduceBy * track);
+      S_trackBuf[track].end = S_trackBuf[track].end - (reduceBy * (track+1));
+      SEQUENCER_PRINT_INT(S_trackBuf[track].start);
+      SEQUENCER_PRINT(F("-"));
+      SEQUENCER_PRINTLN_INT(S_trackBuf[track].end);
+    }
+
+    // TODO: Give back any extra to the last track. Substring will not use it.
+    // --track;
+    // S_trackBuf[track].end =
+
+    sequencerOptimizeBuffer();
+  }
+
+  return status;
+}
+
+
+bool sequencerOptimizeSubstringBuffer()
+{
+  bool status;
+
+  status = false;
+
+  return status;
+}
+
+
+/*---------------------------------------------------------------------------*/
 
 /*
  * Start sequencer.
  */
 bool sequencerStart()
 {
-  bool    status;
-  uint8_t track;
+  bool  status;
+  byte  track;
 
   // TODO: We need some kind of error checking here to make sure we aren't
   // being told to play without adding data. We could check the current
@@ -278,12 +349,12 @@ bool sequencerStart()
         SEQUENCER_PRINTLN(F(" Start new sequence."));
 
         S_seq[track].playNextTime = 0;
-        S_seq[track].trackStatus = TRACK_PLAYING;
-        sequencerShowTrackStatus(track);
-        S_seq[track].repeatCount = 0;
-        S_seq[track].repeatStart = 0; // Not needed.
+        S_seq[track].trackStatus  = TRACK_PLAYING;
+        S_seq[track].repeatCount  = 0;
+        S_seq[track].repeatStart  = 0; // Not needed.
         // TODO: fix this, somewhere else.
-        S_tracksPlaying = MAX_TRACKS;
+        S_tracksPlaying           = MAX_TRACKS;
+        sequencerShowTrackStatus(track);
       }
     }
 
@@ -322,7 +393,7 @@ bool sequencerStop()
   }
 
   S_sequencesToPlay = 0;
-  S_tracksPlaying = 0;
+  S_tracksPlaying   = 0;
 
   return true;
 }
@@ -338,7 +409,7 @@ bool sequencerIsPlaying()
 
 bool sequencerIsReady()
 {
-  return (sequencerBufferAvailable() > (BUFFER_SIZE/MAX_TRACKS/2));
+  return (sequencerGetLargestFreeBufferAvailable() > (BUFFER_SIZE/MAX_TRACKS/2));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -362,10 +433,9 @@ unsigned int sequencerTrackBufferAvailable(byte track)
 /*---------------------------------------------------------------------------*/
 
 /*
- * Return the largest amount of buffer available. Eventually, we'll use one
- * global buffer and this will be better.
+ * Return the largest amount of buffer available in any track.
  */
-unsigned int sequencerBufferAvailable()
+unsigned int sequencerGetLargestFreeBufferAvailable()
 {
   unsigned int track;
   unsigned int largestBufferAvailable;
@@ -384,6 +454,30 @@ unsigned int sequencerBufferAvailable()
   }
 
   return largestBufferAvailable;
+}
+
+/*
+ * Return the smallest amount of buffer available in any track.
+ */
+unsigned int sequencerGetSmallestFreeBufferAvailable()
+{
+  unsigned int track;
+  unsigned int smallestBufferAvailable;
+  unsigned int bufferAvailable;
+
+  sequencerHandler();
+
+  smallestBufferAvailable = BUFFER_SIZE;
+  for (track = 0; track < MAX_TRACKS; track++)
+  {
+    bufferAvailable = sequencerTrackBufferAvailable(track);
+    if (bufferAvailable < smallestBufferAvailable)
+    {
+      smallestBufferAvailable = bufferAvailable;
+    }
+  }
+
+  return smallestBufferAvailable;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -425,8 +519,6 @@ bool sequencerPutByte(byte track, byte value)
           SEQUENCER_PRINT(F(" ("));
           SEQUENCER_PRINT_INT(S_trackBuf[track].nextIn - S_substring[track].addStart);
           SEQUENCER_PRINTLN(F(" bytes)"));
-
-          //
         }
       }
     }
@@ -526,8 +618,6 @@ fix_this_later: // HAHA! A GOTO IN C!
     *value = S_buffer[S_trackBuf[track].nextOut];
     // Erase old value.
     S_buffer[S_trackBuf[track].nextOut] = 0;
-    // Can't do that on Arduino because we put bytes back sometime.
-    // TODO: put back byte.
 
     SEQUENCER_PRINT(F("T"));
     SEQUENCER_PRINT_INT(track);
