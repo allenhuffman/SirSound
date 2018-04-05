@@ -172,25 +172,32 @@ bool sequencerOptimizeBuffer()
 
   for (track=0; track < MAX_TRACKS; track++)
   {
-    byte          *startPtr;
-    byte          *endPtr;
-    unsigned int  rotateLeftAmount;
+    sequencerOptimizeTrackBuffer(track);
+  }
 
-    startPtr          = &S_buffer[S_trackBuf[track].start];
-    endPtr            = &S_buffer[S_trackBuf[track].end];
-    rotateLeftAmount  = (S_trackBuf[track].nextOut - S_trackBuf[track].start);
-    sequencerRotateBytesLeft(startPtr, endPtr, rotateLeftAmount);
+  return true;
+}
 
-    // Adjust positions.
-    S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, -rotateLeftAmount,
-        S_trackBuf[track].start, S_trackBuf[track].end);
+bool sequencerOptimizeTrackBuffer(byte track)
+{
+  byte          *startPtr;
+  byte          *endPtr;
+  unsigned int  rotateLeftAmount;
 
-    S_trackBuf[track].nextOut = sequencerAddShiftWithRollover(S_trackBuf[track].nextOut, -rotateLeftAmount,
-        S_trackBuf[track].start, S_trackBuf[track].end);
+  startPtr          = &S_buffer[S_trackBuf[track].start];
+  endPtr            = &S_buffer[S_trackBuf[track].end];
+  rotateLeftAmount  = (S_trackBuf[track].nextOut - S_trackBuf[track].start);
+  sequencerRotateBytesLeft(startPtr, endPtr, rotateLeftAmount);
 
-    S_seq[track].repeatStart = sequencerAddShiftWithRollover(S_seq[track].repeatStart, -rotateLeftAmount,
-        S_trackBuf[track].start, S_trackBuf[track].end);
-  } // end of for()
+  // Adjust positions.
+  S_trackBuf[track].nextIn = sequencerAddShiftWithRollover(S_trackBuf[track].nextIn, -rotateLeftAmount,
+      S_trackBuf[track].start, S_trackBuf[track].end);
+
+  S_trackBuf[track].nextOut = sequencerAddShiftWithRollover(S_trackBuf[track].nextOut, -rotateLeftAmount,
+      S_trackBuf[track].start, S_trackBuf[track].end);
+
+  S_seq[track].repeatStart = sequencerAddShiftWithRollover(S_seq[track].repeatStart, -rotateLeftAmount,
+      S_trackBuf[track].start, S_trackBuf[track].end);
 
   return true;
 } // end of seqencerInit()
@@ -295,6 +302,7 @@ bool sequencerAddSubstringBuffer(unsigned int bytesToAdd)
       SEQUENCER_PRINT_INT(S_trackBuf[track].end);
       SEQUENCER_PRINT(F(" to "));
       S_trackBuf[track].start = S_trackBuf[track].start - (reduceBy * track);
+      sequencerOptimizeTrackBuffer(track);
       S_trackBuf[track].end = S_trackBuf[track].end - (reduceBy * (track+1));
       SEQUENCER_PRINT_INT(S_trackBuf[track].start);
       SEQUENCER_PRINT(F("-"));
@@ -305,7 +313,9 @@ bool sequencerAddSubstringBuffer(unsigned int bytesToAdd)
     // --track;
     // S_trackBuf[track].end =
 
-    sequencerOptimizeBuffer();
+    // substring start = last track end
+
+    //sequencerOptimizeBuffer();
   }
 
   return status;

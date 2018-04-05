@@ -200,6 +200,7 @@ unsigned int sequencerGetSmallestFreeBufferAvailable();
 void sequencerShowBufferInfo();
 void sequencerShowTrackInfo(byte track);
 bool sequencerOptimizeBuffer();
+bool sequencerOptimizeTrackBuffer(byte track);
 
 bool sequencerAddSubstringBuffer(unsigned int bytesToAdd);
 bool sequencerOptimizeSubstringBuffer();
