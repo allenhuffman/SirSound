@@ -282,6 +282,9 @@ bool sequencerAddSubstringBuffer(unsigned int bytesToAdd)
       reduceBy = (bytesToAdd / MAX_TRACKS);
     } while ((reduceBy * MAX_TRACKS) < bytesToAdd++);
 
+    SEQUENCER_PRINT(F("Add substring bytes: "));
+    SEQUENCER_PRINTLN_INT(bytesToAdd);
+
     for (track = 0; track < MAX_TRACKS; track++)
     {
       SEQUENCER_PRINT(F("T"));
